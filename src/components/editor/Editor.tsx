@@ -13,6 +13,7 @@ import { Outline } from './Outline'
 import { Inspector } from './Inspector'
 import { KeyboardShortcutsDialog } from '@/components/app/KeyboardShortcutsDialog'
 import { DocumentSettingsDialog } from '@/components/app/DocumentSettingsDialog'
+import { recordRecent } from '@/components/app/RecentlyViewed'
 import { Loader2, PanelLeftClose, PanelLeft, PanelRightClose, PanelRight, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -45,6 +46,11 @@ export function Editor({ documentId, title, slug, status, versionNumber, model }
 
   // initialise the store once on mount
   useEffect(() => { load(model) }, [])
+
+  // record this document as recently viewed
+  useEffect(() => {
+    recordRecent({ id: documentId, title, slug, status, ts: Date.now() })
+  }, [documentId, title, slug, status])
 
   const selectedBlock: Block | null = useMemo(() => {
     if (!doc || !selectedPath) return null

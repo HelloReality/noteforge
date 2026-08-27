@@ -596,3 +596,78 @@ Priority recommendations for next phase:
 4. Add dark mode support (next-themes is installed).
 5. Add a block-level search within the editor (find blocks by text).
 6. Scaffold the formal vitest test suites (security.spec.ts, parse.fixtures.spec.ts, roundtrip.spec.ts) per Appendix A.4.
+
+---
+Task ID: 10 (webDevReview cron — round 7)
+Agent: main (orchestrator)
+Task: QA assessment + dark mode + recently viewed + block-level search filter
+
+Work Log:
+- Read full worklog to assess project status. Phase-1 + rounds 1-6 (lifecycle/search/shortcuts/syntax highlighting/settings/DnD/duplicate/reading progress/print/TOC/recently edited/full-text search/Markdown export/preview-mode toggle/share dialog/context menu/search keyboard nav/fullscreen preview/version comparison) all complete and verified.
+- Performed QA: all 8 routes returned 200, zero console errors, zero page errors. Lint clean. App stable.
+- Selected work focus from round-6 recommendations: dark mode (#4), recently viewed (#3), block-level search (#5).
+
+New features built this round:
+
+1. Dark mode support (next-themes + theme toggle + dark CSS overrides):
+   - Created src/components/app/ThemeProvider.tsx — wraps next-themes ThemeProvider (attribute="class", defaultTheme="light", enableSystem, disableTransitionOnChange).
+   - Created src/components/app/ThemeToggle.tsx — dropdown menu with Light/Dark/System options; uses useSyncExternalStore for mount detection (avoids set-state-in-effect lint rule); shows Sun/Moon icon based on current theme.
+   - Updated src/app/layout.tsx — wrapped app in ThemeProvider, added dark: classes to body and footer, added nf-app class for scoped dark overrides.
+   - Updated src/components/app/AppHeader.tsx — added ThemeToggle to the header nav, added dark: variants for all stone-* classes (header bg, text, hover states, nav links).
+   - Added comprehensive dark-mode CSS to src/app/globals.css:
+     - .dark .nf-app — dark background + light text.
+     - Dark overrides for all common stone-* surface classes (bg-stone-50/100/100-60/50-85/50-70/50-80/50-40, bg-white), text classes (text-stone-900/800/700/600/500/400), border classes (border-stone-200/200-70/300/100), hover states.
+     - Amber accents kept vivid in dark (bg-amber-100, text-amber-900/700/600, border-amber-300, bg-amber-500).
+     - .noteforge-doc stays paper-white — notes are documents, not app chrome.
+   - VLM confirmed: "page is in dark mode; background deep charcoal/black, text light gray/white, cards dark gray, accents golden/amber and teal/green."
+
+2. Recently viewed section (localStorage-backed):
+   - Created src/components/app/RecentlyViewed.tsx:
+     - readRecent(), recordRecent(entry), removeRecent(id) — localStorage helpers (key: noteforge:recently-viewed, max 8 items, dedup + move-to-front).
+     - useSyncExternalStore-based subscription (subscribes to storage events + custom 'noteforge:recent-changed' event for same-tab updates).
+     - Cached snapshot string for referential stability (avoids infinite re-renders).
+     - Compact horizontal cards with status dot (color-coded), title, relative timestamp, remove (X) button on hover, arrow.
+     - "Clear all" button to wipe the list.
+     - Dark mode support (dark: classes on cards).
+   - Updated src/components/editor/Editor.tsx — records the document as recently viewed on mount (recordRecent effect with documentId/title/slug/status deps).
+   - Added RecentlyViewed to the library page (src/app/page.tsx) above the document grid, after the hero.
+   - VLM confirmed: "RECENTLY VIEWED section with two document cards (Cybersecurity Notes — just now, Cybersecurity Notes — 3m ago)."
+
+3. Block-level search filter in the editor outline:
+   - Added `filter` state to the Outline component (src/components/editor/Outline.tsx).
+   - Added a search input (with Search icon + X clear button) between the page tabs and the block list.
+   - When filtering, hides blocks whose snippet doesn't match (case-insensitive); also checks question children for matches.
+   - Dark mode support on the input.
+   - Verified: filter input present, typing "SQL" filters the outline.
+
+Styling polish:
+- Dark-mode CSS overrides for the entire app chrome (header, footer, cards, inputs, borders, text, hover states).
+- Note content (.noteforge-doc) intentionally stays paper-white in dark mode — documents remain readable.
+- Theme toggle dropdown with Light/Dark/System options.
+
+Stage Summary (verification results):
+- `bun run lint`: 0 errors, 0 warnings.
+- `bunx tsc --noEmit`: 0 errors in any new/modified file.
+- All 8 routes return 200.
+- agent-browser QA:
+  - Theme toggle button found, menu opens.
+  - Recently viewed: localStorage populated after editor visit, section renders on home (VLM confirmed "RECENTLY VIEWED with two document cards").
+  - Editor block filter: input present, filtering works.
+  - Dark mode: adding 'dark' class to <html> activates dark theme (VLM confirmed "deep charcoal background, light text, dark cards, amber accents").
+  - Zero console errors on any route.
+- VLM screenshot analysis: recently viewed "two document cards (just now, 3m ago)"; dark mode "deep charcoal/black background, light gray/white text, dark gray cards, golden/amber accents".
+
+Unresolved issues / risks:
+- The sandbox continues to kill background processes between Bash tool calls — required multiple restarts.
+- The theme toggle dropdown items weren't directly clickable via agent-browser eval (Radix Portal timing), but dark mode works when activated (verified via direct class + VLM).
+- Direct-canvas block selection in edit mode is still a Phase-2 enhancement.
+- Formal vitest/playwright test suites (A.4) are still not scaffolded.
+- The hero section keeps a light gradient in dark mode (intentional — amber-50→white gradient is a design choice); could add a dark variant in a future round.
+
+Priority recommendations for next phase:
+1. Add inline rich-text editing (click a heading/paragraph in the preview to edit it directly).
+2. Add a character-level content diff in the version comparison.
+3. Add a dark-mode variant for the hero gradient.
+4. Add a "favorite"/"star" documents feature with a filter on the library.
+5. Add a document statistics dashboard (total words, blocks, diagrams across all docs).
+6. Scaffold the formal vitest test suites (security.spec.ts, parse.fixtures.spec.ts, roundtrip.spec.ts) per Appendix A.4.

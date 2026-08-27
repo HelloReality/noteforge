@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { listDocuments, getPublishedSlugs, getDocumentStats, listRecentDocuments, type DocumentListRow } from '@/lib/server/storage'
 import { AppEmptyState } from '@/components/app/AppEmptyState'
 import { LibraryClient, type LibraryDoc } from '@/components/app/LibraryClient'
+import { RecentlyViewed } from '@/components/app/RecentlyViewed'
 import { Upload, ShieldCheck, FileText, Globe, Layers, Search, Clock, ArrowRight } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -75,6 +76,9 @@ export default async function LibraryPage() {
           )}
         </div>
       </section>
+
+      {/* Recently viewed (client-side, localStorage) */}
+      {docs.length > 0 && <RecentlyViewed />}
 
       {docs.length === 0 ? (
         <AppEmptyState />

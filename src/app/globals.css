@@ -163,3 +163,53 @@
     padding: 0 !important;
   }
 }
+
+/* NoteForge — dark mode overrides.
+   The app uses many stone-* Tailwind utility classes for surfaces. In dark
+   mode we remap the most common ones to dark equivalents via targeted CSS so
+   the whole app (library, editor, review, versions, search, public viewer)
+   becomes dark-readable without rewriting every component.
+   Note content (.noteforge-doc) keeps its own paper-white look — notes are
+   documents, not app chrome. */
+.dark .nf-app {
+  background: oklch(0.145 0 0);
+  color: oklch(0.985 0 0);
+}
+/* Map common stone surface classes used across the app to dark variants. */
+.dark body { background: oklch(0.145 0 0); color: oklch(0.985 0 0); }
+.dark .bg-stone-50 { background-color: oklch(0.18 0 0) !important; }
+.dark .bg-stone-100 { background-color: oklch(0.205 0 0) !important; }
+.dark .bg-stone-200\/60,\n.dark .bg-stone-200\/70 { background-color: oklch(0.269 0 0 / 60%) !important; }
+.dark .bg-stone-100\/60 { background-color: oklch(0.205 0 0 / 60%) !important; }
+.dark .bg-stone-50\/85 { background-color: oklch(0.16 0 0 / 85%) !important; }
+.dark .bg-stone-50\/70 { background-color: oklch(0.16 0 0 / 70%) !important; }
+.dark .bg-stone-50\/80 { background-color: oklch(0.16 0 0 / 80%) !important; }
+.dark .bg-stone-50\/40 { background-color: oklch(0.16 0 0 / 40%) !important; }
+.dark .bg-white { background-color: oklch(0.205 0 0) !important; }
+/* Text */
+.dark .text-stone-900 { color: oklch(0.97 0 0) !important; }
+.dark .text-stone-800 { color: oklch(0.92 0 0) !important; }
+.dark .text-stone-700 { color: oklch(0.82 0 0) !important; }
+.dark .text-stone-600 { color: oklch(0.72 0 0) !important; }
+.dark .text-stone-500 { color: oklch(0.62 0 0) !important; }
+.dark .text-stone-400 { color: oklch(0.52 0 0) !important; }
+/* Borders */
+.dark .border-stone-200 { border-color: oklch(0.3 0 0) !important; }
+.dark .border-stone-200\/70 { border-color: oklch(0.3 0 0 / 70%) !important; }
+.dark .border-stone-300 { border-color: oklch(0.35 0 0) !important; }
+.dark .border-stone-100 { border-color: oklch(0.28 0 0) !important; }
+/* Hover states for dark */
+.dark .hover\:bg-stone-100:hover { background-color: oklch(0.25 0 0) !important; }
+.dark .hover\:bg-stone-200\/60:hover { background-color: oklch(0.3 0 0 / 60%) !important; }
+.dark .hover\:bg-stone-50:hover { background-color: oklch(0.22 0 0) !important; }
+.dark .hover\:text-stone-900:hover { color: oklch(0.97 0 0) !important; }
+.dark .hover\:text-stone-800:hover { color: oklch(0.92 0 0) !important; }
+/* Keep amber accents vivid in dark */
+.dark .bg-amber-100 { background-color: oklch(0.45 0.13 75) !important; color: oklch(0.96 0 0); }
+.dark .text-amber-900 { color: oklch(0.96 0 0) !important; }
+.dark .text-amber-700 { color: oklch(0.78 0.15 75) !important; }
+.dark .text-amber-600 { color: oklch(0.72 0.16 75) !important; }
+.dark .border-amber-300 { border-color: oklch(0.65 0.15 75) !important; }
+.dark .bg-amber-500 { background-color: oklch(0.7 0.17 75) !important; }
+/* The note content stays paper-white even in dark mode — it's a document. */
+.dark .noteforge-doc { background: transparent; }

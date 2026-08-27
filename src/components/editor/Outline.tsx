@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button'
 import {
   Plus, Trash2, ChevronUp, ChevronDown, Heading1, Pilcrow, List, HelpCircle,
   MessageSquareQuote, StickyNote, Quote, Minus, Square, Code2, Table, Image as ImageIcon,
-  Spline, Type, Layers, GripVertical, Copy, WrapText,
+  Spline, Type, Layers, GripVertical, Copy, WrapText, Search, X,
 } from 'lucide-react'
 import {
   ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem,
@@ -66,6 +66,7 @@ export function Outline({ currentPage }: { currentPage: number }) {
   const duplicateBlock = useEditorStore((s) => s.duplicateBlock)
   const wrapInQuestion = useEditorStore((s) => s.wrapInQuestion)
   const [adding, setAdding] = useState(false)
+  const [filter, setFilter] = useState('')
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -117,6 +118,29 @@ export function Outline({ currentPage }: { currentPage: number }) {
         </div>
       )}
 
+      {/* Block search filter */}
+      <div className="px-3 pb-2">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-stone-400" />
+          <input
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Filter blocks…"
+            className="h-7 w-full rounded-md border border-stone-200 bg-white pl-7 pr-2 text-xs text-stone-700 placeholder:text-stone-400 focus:border-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-300 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-200"
+            aria-label="Filter blocks"
+          />
+          {filter && (
+            <button
+              onClick={() => setFilter('')}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700"
+              aria-label="Clear filter"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="flex-1 overflow-auto px-2 pb-2">
         <DndContext
           sensors={sensors}
@@ -124,22 +148,32 @@ export function Outline({ currentPage }: { currentPage: number }) {
           onDragEnd={handleDragEnd}
         >
           <SortableContext items={blockIds} strategy={verticalListSortingStrategy}>
-            {page.blocks.map((b, i) => (
-              <SortableBlockRow
-                key={`block-${i}`}
-                id={`block-${i}`}
-                block={b}
-                path={[currentPage, i]}
-                depth={0}
-                selectedPath={selectedPath}
-                pathEq={pathEq}
-                onSelect={select}
-                onDelete={deleteBlock}
-                onMove={moveBlock}
-                onDuplicate={duplicateBlock}
-                onWrapInQuestion={wrapInQuestion}
-              />
-            ))}
+            {page.blocks.map((b, i) => {
+              // When filtering, hide blocks that don't match.
+              if (filter) {
+                const snippet = blockSnippet(b).toLowerCase()
+                const childMatch = b.type === 'question' && b.children.some((c: Block) =>
+                  blockSnippet(c).toLowerCase().includes(filter.toLowerCase())
+                )
+                if (!snippet.includes(filter.toLowerCase()) && !childMatch) return null
+              }
+              return (
+                <SortableBlockRow
+                  key={`block-${i}`}
+                  id={`block-${i}`}
+                  block={b}
+                  path={[currentPage, i]}
+                  depth={0}
+                  selectedPath={selectedPath}
+                  pathEq={pathEq}
+                  onSelect={select}
+                  onDelete={deleteBlock}
+                  onMove={moveBlock}
+                  onDuplicate={duplicateBlock}
+                  onWrapInQuestion={wrapInQuestion}
+                />
+              )
+            })}
           </SortableContext>
         </DndContext>
       </div>
