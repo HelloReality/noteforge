@@ -583,3 +583,49 @@ export async function listRecentDocuments(limit = 5): Promise<DocumentListRow[]>
     latestVersionNumber: d.latestVersion?.number ?? null,
   }))
 }
+
+/** Aggregate statistics across ALL documents (for the dashboard summary). */
+export interface LibraryStats {
+  documents: number
+  versions: number
+  pages: number
+  blocks: number
+  words: number
+  diagrams: number
+  tables: number
+  questions: number
+}
+export async function getLibraryStats(): Promise<LibraryStats> {
+  const docs = await db.document.findMany({
+    include: {
+      _count: { select: { versions: true } },
+      latestVersion: { select: { modelJson: true } },
+    },
+  })
+  let pages = 0, blocks = 0, words = 0, diagrams = 0, tables = 0, questions = 0, versions = 0
+  for (const d of docs) {
+    versions += d._count.versions
+    if (!d.latestVersion) continue
+    try {
+      const model = JSON.parse(d.latestVersion.modelJson) as NoteDocument
+      pages += model.pages.length
+      for (const page of model.pages) {
+        for (const b of page.blocks) {
+          const count = (blk: any) => {
+            blocks++
+            if (blk.type === 'question') { questions++; blk.children?.forEach(count) }
+            if (blk.type === 'diagram') diagrams++
+            if (blk.type === 'table') tables++
+            const html = blk.html || blk.text || blk.term || ''
+            if (html) words += html.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length
+            if (blk.items) words += blk.items.map((i: any) => i.html?.replace(/<[^>]+>/g, ' ') || '').join(' ').split(/\s+/).filter(Boolean).length
+          }
+          count(b)
+        }
+      }
+    } catch {
+      // skip unparseable
+    }
+  }
+  return { documents: docs.length, versions, pages, blocks, words, diagrams, tables, questions }
+}

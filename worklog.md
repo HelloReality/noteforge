@@ -671,3 +671,87 @@ Priority recommendations for next phase:
 4. Add a "favorite"/"star" documents feature with a filter on the library.
 5. Add a document statistics dashboard (total words, blocks, diagrams across all docs).
 6. Scaffold the formal vitest test suites (security.spec.ts, parse.fixtures.spec.ts, roundtrip.spec.ts) per Appendix A.4.
+
+---
+Task ID: 11 (webDevReview cron — round 8)
+Agent: main (orchestrator)
+Task: QA assessment + favorites/star feature + library statistics dashboard + dark hero variant
+
+Work Log:
+- Read full worklog to assess project status. Phase-1 + rounds 1-7 (lifecycle/search/shortcuts/syntax highlighting/settings/DnD/duplicate/reading progress/print/TOC/recently edited/full-text search/Markdown export/preview-mode toggle/share dialog/context menu/search keyboard nav/fullscreen preview/version comparison/dark mode/recently viewed/block filter) all complete and verified.
+- Performed QA: all 8 routes returned 200, zero console errors, zero page errors. Lint clean. App stable.
+- Selected work focus from round-7 recommendations: favorites/star (#4), dark hero variant (#3), document statistics dashboard (#5).
+
+New features built this round:
+
+1. Favorite/star documents feature (localStorage-backed):
+   - Created src/components/app/Favorites.tsx:
+     - useFavorites() hook using useSyncExternalStore (subscribes to storage events + custom 'noteforge:favorites-changed' event).
+     - readFavorites(), writeFavorites() localStorage helpers (key: noteforge:favorites, string[] of document IDs).
+     - Cached snapshot for referential stability.
+     - FavoriteStar component — compact star button that fills amber when favorited; supports sm/md sizes; dark mode support.
+   - Updated src/components/app/DocumentCard.tsx — added FavoriteStar next to the status badge on each card.
+   - Updated src/components/app/LibraryClient.tsx:
+     - Added favoritesOnly state + useFavorites() hook.
+     - Filter logic: when favoritesOnly is true, only shows docs whose ID is in the favorites set.
+     - Sort logic: when sorting by 'updated', favorited docs sort to the top.
+     - Empty state shows "No favorite documents yet" when favoritesOnly and no results.
+     - Clear filters button resets favoritesOnly too.
+   - Updated src/components/app/LibraryToolbar.tsx:
+     - Added Favorites toggle button (amber when active, outline when inactive).
+     - Shows star icon + count badge (number of favorites).
+     - Count badge styled differently when active (bg-white/20) vs inactive (bg-stone-100).
+   - VLM confirmed: "Favorites button filled amber, shows 2 starred documents, counter '2 of 4', badge '2'".
+
+2. Library statistics dashboard:
+   - Added getLibraryStats() to src/lib/server/storage.ts:
+     - Aggregates across ALL documents' latest versions: documents, versions, pages, blocks, words, diagrams, tables, questions.
+     - Walks every block recursively (question children counted), strips HTML for word counts.
+   - Updated src/app/page.tsx:
+     - Fetches libraryStats via getLibraryStats().
+     - Added "Library at a glance" section with 8 stat tiles in a responsive grid (2 cols mobile, 4 cols sm, 8 cols lg).
+     - LibStat component: centered icon + bold value + uppercase label, color-coded (amber for docs/words, stone for versions/pages/blocks, emerald for questions/diagrams/tables).
+     - formatNumber() helper: 1k/1M abbreviations for large word counts.
+     - Dark mode support on all stat tiles.
+   - VLM confirmed: "LIBRARY AT A GLANCE section with Documents (4), Versions (6), Pages (5), Blocks (63), Questions (11), Diagrams (7), Tables (1), Words (480)".
+
+3. Dark-mode hero gradient:
+   - Updated the hero section in src/app/page.tsx:
+     - Light: from-amber-50 via-white to-stone-50 (cream/white gradient).
+     - Dark: dark:from-stone-800 dark:via-stone-900 dark:to-stone-950 (dark charcoal gradient).
+     - Added dark:border-stone-700 for the border.
+   - The hero now adapts to dark mode instead of staying light.
+
+Styling polish:
+- LibStat and StatTile components both have dark-mode variants (dark:border-*, dark:bg-*, dark:text-*).
+- Favorites toggle button with active/inactive states (amber filled vs outline).
+- Star icons fill amber when favorited, outline stone when not.
+- Library stats grid is responsive (2→4→8 columns).
+- Recently edited section header has dark:text-stone-400.
+
+Stage Summary (verification results):
+- `bun run lint`: 0 errors, 0 warnings.
+- `bunx tsc --noEmit`: 0 errors in any new/modified file.
+- All 8 routes return 200.
+- agent-browser QA:
+  - Home: Favorites button found, 4 star buttons on cards, starred 2 docs, filter shows "2 of 4".
+  - Library at a glance: 8 stat tiles rendering (documents/versions/pages/blocks/questions/diagrams/tables/words).
+  - Dark hero: gradient adapts (dark:from-stone-800 via-stone-900 to-stone-950).
+  - Zero console errors on any route.
+- VLM screenshot analysis:
+  - Home: "Favorites button with count 1, star icons on cards (first filled gold), LIBRARY AT A GLANCE with 8 stat tiles."
+  - Favorites filtered: "Favorites button highlighted amber, 2 starred documents shown, counter '2 of 4', badge '2'."
+
+Unresolved issues / risks:
+- The sandbox continues to kill background processes between Bash tool calls — required multiple restarts.
+- The favorites are localStorage-only (per-browser); a future enhancement could persist them server-side per user.
+- Direct-canvas block selection in edit mode is still a Phase-2 enhancement.
+- Formal vitest/playwright test suites (A.4) are still not scaffolded.
+
+Priority recommendations for next phase:
+1. Add inline rich-text editing (click a heading/paragraph in the preview to edit it directly).
+2. Add a character-level content diff in the version comparison.
+3. Add a "tags" or "collections" feature for organizing documents beyond favorites.
+4. Add a batch operations mode (select multiple docs, bulk delete/publish/export).
+5. Add a document templates gallery (pre-built .note.html starters).
+6. Scaffold the formal vitest test suites (security.spec.ts, parse.fixtures.spec.ts, roundtrip.spec.ts) per Appendix A.4.

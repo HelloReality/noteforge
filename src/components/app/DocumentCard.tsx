@@ -3,6 +3,7 @@
 
 import Link from 'next/link'
 import { DocumentActions } from './DocumentActions'
+import { FavoriteStar } from './Favorites'
 import type { DocumentListRow, DocumentStats } from '@/lib/server/storage'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -36,7 +37,8 @@ export function DocumentCard({ doc, stats, published }: {
             {doc.title}
           </Link>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5">
+          <FavoriteStar documentId={doc.id} />
           <Badge variant="outline" className={cn('border', STATUS_STYLE[doc.status] ?? STATUS_STYLE.draft)}>
             {doc.status}
           </Badge>

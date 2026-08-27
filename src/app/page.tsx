@@ -2,11 +2,11 @@
 // Server component. Hero + stats + search/filter/sort + document grid.
 
 import Link from 'next/link'
-import { listDocuments, getPublishedSlugs, getDocumentStats, listRecentDocuments, type DocumentListRow } from '@/lib/server/storage'
+import { listDocuments, getPublishedSlugs, getDocumentStats, listRecentDocuments, getLibraryStats, type DocumentListRow } from '@/lib/server/storage'
 import { AppEmptyState } from '@/components/app/AppEmptyState'
 import { LibraryClient, type LibraryDoc } from '@/components/app/LibraryClient'
 import { RecentlyViewed } from '@/components/app/RecentlyViewed'
-import { Upload, ShieldCheck, FileText, Globe, Layers, Search, Clock, ArrowRight } from 'lucide-react'
+import { Upload, ShieldCheck, FileText, Globe, Layers, Search, Clock, ArrowRight, Hash, Spline, Table as TableIcon, Type, HelpCircle } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,6 +14,7 @@ export default async function LibraryPage() {
   const docs = await listDocuments()
   const publishedSlugs = await getPublishedSlugs()
   const recentDocs = await listRecentDocuments(5)
+  const libraryStats = docs.length > 0 ? await getLibraryStats() : null
 
   // batch-fetch stats for every document (fine for small libraries)
   const statsPromises = docs.map((d) => getDocumentStats(d.id).catch(() => null))
@@ -28,7 +29,7 @@ export default async function LibraryPage() {
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-8">
       {/* Hero */}
-      <section className="mb-8 overflow-hidden rounded-2xl border border-stone-200 bg-gradient-to-br from-amber-50 via-white to-stone-50 p-6 sm:p-8">
+      <section className="mb-8 overflow-hidden rounded-2xl border border-stone-200 bg-gradient-to-br from-amber-50 via-white to-stone-50 p-6 dark:border-stone-700 dark:bg-gradient-to-br dark:from-stone-800 dark:via-stone-900 dark:to-stone-950 sm:p-8">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="max-w-2xl">
             <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800">
@@ -90,7 +91,7 @@ export default async function LibraryPage() {
       {docs.length > 0 && (
         <section className="mt-10">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-stone-500">
+            <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">
               <Clock className="h-4 w-4" /> Recently edited
             </h2>
             <Link href="/search" className="text-xs font-medium text-amber-600 hover:text-amber-700 hover:underline">
@@ -98,6 +99,27 @@ export default async function LibraryPage() {
             </Link>
           </div>
           <RecentDocuments docs={recentDocs} publishedSlugs={publishedSlugs} />
+        </section>
+      )}
+
+      {/* Library statistics dashboard */}
+      {libraryStats && (
+        <section className="mt-10">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+              <Layers className="h-4 w-4" /> Library at a glance
+            </h2>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+            <LibStat icon={<FileText className="h-4 w-4" />} value={libraryStats.documents} label="documents" tone="amber" />
+            <LibStat icon={<Clock className="h-4 w-4" />} value={libraryStats.versions} label="versions" tone="stone" />
+            <LibStat icon={<Layers className="h-4 w-4" />} value={libraryStats.pages} label="pages" tone="stone" />
+            <LibStat icon={<Hash className="h-4 w-4" />} value={libraryStats.blocks} label="blocks" tone="stone" />
+            <LibStat icon={<HelpCircle className="h-4 w-4" />} value={libraryStats.questions} label="questions" tone="emerald" />
+            <LibStat icon={<Spline className="h-4 w-4" />} value={libraryStats.diagrams} label="diagrams" tone="emerald" />
+            <LibStat icon={<TableIcon className="h-4 w-4" />} value={libraryStats.tables} label="tables" tone="emerald" />
+            <LibStat icon={<Type className="h-4 w-4" />} value={formatNumber(libraryStats.words)} label="words" tone="amber" />
+          </div>
         </section>
       )}
 
@@ -172,9 +194,9 @@ function StatTile({ icon, value, label, tone }: {
   tone: 'emerald' | 'amber' | 'stone'
 }) {
   const styles = {
-    emerald: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    amber: 'border-amber-200 bg-amber-50 text-amber-700',
-    stone: 'border-stone-200 bg-stone-50 text-stone-600',
+    emerald: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300',
+    amber: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300',
+    stone: 'border-stone-200 bg-stone-50 text-stone-600 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300',
   }[tone]
   return (
     <div className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 ${styles}`}>
@@ -185,4 +207,30 @@ function StatTile({ icon, value, label, tone }: {
       </div>
     </div>
   )
+}
+
+function LibStat({ icon, value, label, tone }: {
+  icon: React.ReactNode
+  value: number | string
+  label: string
+  tone: 'emerald' | 'amber' | 'stone'
+}) {
+  const styles = {
+    emerald: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300',
+    amber: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300',
+    stone: 'border-stone-200 bg-stone-50 text-stone-600 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300',
+  }[tone]
+  return (
+    <div className={`flex flex-col items-center rounded-lg border p-3 text-center ${styles}`}>
+      <span className="opacity-70">{icon}</span>
+      <span className="mt-1 text-xl font-bold leading-none">{value}</span>
+      <span className="mt-0.5 text-[10px] uppercase tracking-wide opacity-70">{label}</span>
+    </div>
+  )
+}
+
+function formatNumber(n: number): string {
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
+  return String(n)
 }
