@@ -1,0 +1,943 @@
+Here is the complete build specification, consolidated from your requirements document and reference notes into a single, self-contained `SPEC.md` that a vibe coding agent can execute against directly.
+
+````markdown
+# SPEC.md — Editable Visual Notes Platform ("NoteForge")
+
+> **Instructions to the coding agent:** Read this entire document before writing code. Build in the phase order defined in §25. Run the test suite after every phase. Never skip the sanitizer (§10). There is exactly ONE document renderer (§11) — never create a second rendering path. When any decision is ambiguous, choose the option that **preserves visual fidelity of the imported note**.
+
+---
+
+## 1. Project Summary
+
+A web platform for importing, editing, versioning, and publishing highly visual educational notes (primary vertical: cybersecurity study notes, e.g., "Top 50 Cybersecurity Interview Questions" — handwritten-style pages with tables, flowcharts, callouts, icons, and highlighted terms).
+
+**Core workflow:**
+
+```
+Instagram/reference image → Claude/GLM Vision → self-contained `.note.html` file
+  → Upload to platform → Import + validate + sanitize → Editable document
+  → Edit (text, Mermaid, SVG, Excalidraw) → Save → Version → Preview → Publish
+  → Public viewer renders the EXACT saved design as real, SEO-friendly HTML
+```
+
+### 1.1 Non-Negotiable Rules
+
+1. **Visual fidelity** — the imported note's design is authoritative. Never restyle, re-theme, or "improve" it.
+2. **Editability** — never flatten text/diagrams to images (PNG export only on explicit request).
+3. **Portability** — any valid `.note.html` uploads and renders; `.note.html` export round-trips.
+4. **One renderer** — editor, preview, and public viewer use the same rendering code.
+5. **No silent AI** — opening, saving, or publishing NEVER calls an AI provider. AI actions are explicit user-initiated buttons only.
+6. **Stability** — page geometry is fixed (from the document). Zoom/responsive changes only visual scale, never layout coordinates.
+7. **Security** — uploaded HTML/SVG/CSS is sanitized with a strict allowlist before it ever touches the app origin.
+8. **Version integrity** — editing a draft never mutates a published version. Publishing creates an immutable snapshot.
+9. **Portability of diagram data** — Mermaid stays Mermaid source; SVG stays SVG; Excalidraw stays scene JSON.
+10. **Originals preserved** — the uploaded `.note.html` and the reference image are stored immutably and never overwritten.
+
+---
+
+## 2. Glossary
+
+| Term | Meaning |
+|---|---|
+| `.note.html` | Self-contained portable note file; the interchange format (§5) |
+| Internal Document Model | Structured JSON the app edits and stores (§6) |
+| Draft | Working copy of a document, autosaved, not public |
+| Version | Immutable labeled snapshot of the draft |
+| Publication | An active published version bound to a public slug |
+| Shared Renderer | Single React component tree used by editor/preview/public |
+| Reference image | Original source image (e.g., Instagram screenshot) used to generate the note |
+
+---
+
+## 3. Tech Stack & Environment
+
+| Concern | Choice (pin these) |
+|---|---|
+| Framework | Next.js 14.2+ (App Router), React 18, TypeScript 5 (strict) |
+| App UI styling | Tailwind CSS 3.4 — **must not leak into note rendering** (see §11.3) |
+| State | Zustand 4 |
+| Diagrams | `mermaid@^11`, `@excalidraw/excalidraw@^0.17` (lazy-loaded) |
+| Parsing/sanitizing (server) | `parse5@^7`, `postcss@^8`, `dompurify@^3` + `jsdom` (second-pass net) |
+| DB | PostgreSQL 16 via Prisma 5 |
+| Storage | Pluggable: local disk (dev) / S3-compatible (prod) |
+| Auth | Auth.js (NextAuth v4) credentials provider; `DEV_SINGLE_USER=true` bypasses auth in dev |
+| Validation | Zod 3 |
+| IDs | `nanoid` (8 chars, prefixed per entity) |
+| Diff | `diff@^5` (version text compare) |
+| Tests | Vitest (unit), React Testing Library (component), Playwright (e2e + visual) |
+
+### 3.1 Environment Variables
+
+```
+DATABASE_URL=postgresql://...
+AUTH_SECRET=...
+DEV_SINGLE_USER=true            # dev default; false in prod
+STORAGE_DRIVER=local|s3
+STORAGE_LOCAL_DIR=.storage
+S3_ENDPOINT= S3_BUCKET= S3_ACCESS_KEY_ID= S3_SECRET_ACCESS_KEY=
+MAX_NOTE_FILE_MB=15
+MAX_PAGES_PER_DOC=60
+# Phase 5:
+ANTHROPIC_API_KEY=
+GLM_API_KEY=
+```
+
+### 3.2 Limits
+
+- `.note.html` file ≤ 15 MB; per embedded data-URI image ≤ 3 MB; pages ≤ 60; elements per page ≤ 400; document CSS ≤ 2 MB; Excalidraw scene ≤ 5,000 elements, embedded files ≤ 1 MB each.
+
+---
+
+## 4. System Architecture
+
+```
+                         VLM (Claude / GLM)  [Phase 5, optional, explicit]
+                                  │
+                                  ▼
+                          `.note.html` file
+                                  │  UPLOAD (drag & drop)
+                                  ▼
+                      ┌─────────────────────┐
+                      │  Import Pipeline     │  server-side
+                      │  validate → sanitize │
+                      │  → parse → CSS scope │
+                      │  → build model       │
+                      └──────┬───────┬──────┘
+                             │       │
+                Original file stored  Internal Document Model
+                (immutable)          (JSONB draft + version snapshots)
+                             │       │
+                             ▼       ▼
+                   Import Review (side-by-side vs reference image)
+                             │  Accept & Edit
+                             ▼
+        ┌───────────────────────────────────────────────┐
+        │  EDITOR (desktop-first)                        │
+        │  text · add/delete · pages · layers · undo/redo│
+        │  Mermaid modal · SVG panel · Excalidraw modal  │
+        └───────────────────┬───────────────────────────┘
+                            │ autosave draft / explicit Save Version
+                            ▼
+                     VERSION HISTORY (immutable snapshots, restore, compare)
+                            │ Publish (explicit, validates, snapshots)
+                            ▼
+                     PUBLICATION (slug, SEO)
+                            │
+                            ▼
+              PUBLIC VIEWER  /notes/[slug]  (SSR, real HTML, responsive scale)
+              — rendered by the SAME Shared Renderer as editor & preview —
+```
+
+### 4.1 Key Architectural Decisions (do not relitigate)
+
+| Decision | Choice | Rationale |
+|---|---|---|
+| Version storage | Full JSONB snapshot per version (not normalized element rows) | Immutable, trivially restorable/compare/renderable; avoids row-level versioning bugs |
+| Undo/redo | Snapshot stack in client store (cap 50) | Far more reliable for an AI-built codebase than inverse commands |
+| Note CSS | Imported stylesheet is rewritten at import time: selectors prefixed with `.note-root-{docId}`, `html/body` remapped to root | Preserves fidelity; prevents leakage into app UI |
+| Tailwind vs notes | Tailwind preflight is neutralized inside note root via a scoped UA-restore stylesheet (§11.3) | Preflight would otherwise destroy default heading/list/table styles |
+| Mermaid in public | Client-side lazy render + cached `renderedSvg` on the element when available | No heavy server rendering dependency; instant display when cached |
+| Excalidraw in public | Cached SVG only (generated on save via `exportToSvg`); the Excalidraw bundle loads only in the editor modal | Public pages stay lightweight |
+| Diagram validation | Mermaid render-tested client-side during Import Review | Avoids headless-browser complexity; user sees failures inline |
+
+---
+
+## 5. The `.note.html` Format — v1 Specification
+
+This is the contract for AI generators, the importer, and the exporter. **The importer and exporter must both implement this spec exactly, and round-trip (import → export → import) must produce an identical Internal Document Model.**
+
+### 5.1 File Rules
+
+- UTF-8 HTML file, extension `.note.html`, recommended name `<slug>.note.html` (e.g., `top-50-cybersecurity-interview-questions.note.html`).
+- **Self-contained**: all CSS inline in `<style>`, all images as `data:` URIs, all diagram sources embedded. No external CSS/JS/fonts/images.
+- Must render standalone in a browser with zero network access.
+- No `<script>` tags. The format is declarative only.
+
+### 5.2 Document Skeleton
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="note-format" content="visual-notes/1">
+  <meta name="note-generator" content="claude-sonnet-4">      <!-- optional -->
+  <meta name="note-document-id" content="uuid">               <!-- optional -->
+  <title>Top 50 Cybersecurity Interview Questions</title>
+  <style>
+    /* complete note stylesheet; may use custom classes, @media, @keyframes,
+       custom properties on .note-document / .note-page scope */
+  </style>
+</head>
+<body>
+  <note-document data-title="Top 50 Cybersecurity Interview Questions"
+                 data-version="1"
+                 data-slug="top-50-cybersecurity-interview-questions"
+                 data-theme="handwritten-study-notes">
+
+    <note-page data-page="1" data-width="900" data-height="1270"
+               data-background="#fdf6e3">
+      <!-- block elements in document order -->
+    </note-page>
+
+    <note-page data-page="2" data-width="900" data-height="1270"> ... </note-page>
+
+  </note-document>
+</body>
+</html>
+```
+
+### 5.3 Block Element Reference
+
+All elements accept optional `class`, `style` (inline CSS), `id`, and `data-*` attributes. Attributes marked **\*** are required.
+
+| Tag | Attributes | Children | Internal type |
+|---|---|---|---|
+| `<note-document>` | `data-title`\*, `data-version`, `data-slug`, `data-theme` | 1+ `<note-page>` | — |
+| `<note-page>` | `data-page` (1-based), `data-width`\*, `data-height`\* (px, 200–5000), `data-background` (CSS color) | block elements | `page` |
+| `<note-title>` | `data-align` (left\|center\|right) | rich text | `title` |
+| `<note-heading>` | `level` (1\|2\|3, default 2), `data-align` | rich text | `heading` |
+| `<note-question>` | `number` (int) — container for one Q&A card | `<note-heading>` + blocks | `question` |
+| `<note-paragraph>` | `data-align` | rich text | `paragraph` |
+| `<note-list>` | `type` (bullet\|check\|numbered, default bullet), `start` | 1+ `<note-item>` | `list` |
+| `<note-item>` | `data-checked` (bool, check lists), `data-marker` (override marker text) | rich text | list item |
+| `<note-callout>` | `type` (info\|warning\|tip\|danger\|success, default info), `title` | rich text **or** block children | `callout` |
+| `<note-definition>` | `term`\* | rich text (the definition body) | `definition` |
+| `<note-table>` | `data-caption` | a standard `<table>` with `<thead>/<tbody>/<tr>/<th>/<td>` | `table` |
+| `<note-code>` | `language` | raw text (HTML-escaped) | `code` |
+| `<note-quote>` | `data-cite` | rich text | `quote` |
+| `<note-diagram>` | `type`\* (mermaid\|svg\|excalidraw), `data-width`, `data-height`, `data-title` | source (see §5.6) | `diagram` |
+| `<note-image>` | `src`\* (`data:` URI or `asset://<id>`), `alt`, `width`, `height`, `data-caption` | — | `image` |
+| `<note-divider>` | `style` (solid\|dashed\|dotted, default solid) | — | `divider` |
+| `<note-spacer>` | `height` (px, default 24) | — | `spacer` |
+
+**Passthrough:** unknown `<note-*>` tags and allowed standard HTML blocks (`div, p, h1–h6, ul, ol, li, table, figure, figcaption, blockquote, pre, hr`) found inside a page are sanitized and preserved as an `html` block element (rendered as-is), with an import warning `UNSUPPORTED_ELEMENT_PRESERVED`.
+
+### 5.4 Rich Text (Inline) Rules
+
+Allowed inside any rich-text-bearing element: `#text`, `strong/b`, `em/i`, `u`, `s`, `mark`, `code`, `span` (class/style only), `a` (`href` http/https only), `br`, `sup`, `sub`, `small`.
+Anything else inside a text element: **stripped with warning**; if it was a block element, it is moved after the parent element with warning `BLOCK_IN_TEXT_MOVED`.
+
+### 5.5 Layout Model
+
+- **Flow (default):** elements stack in document order; spacing/typography comes from the document stylesheet.
+- **Absolute:** any element with `data-x` / `data-y` (px) is rendered `position:absolute; left/top` within its page. Optional `data-w`, `data-h`, `data-z`.
+- Z-order default = DOM order; `data-z` or inline `z-index` overrides.
+- Editor: flow elements support reorder; absolute elements support free drag/resize on canvas.
+
+### 5.6 Diagram Embedding
+
+**Mermaid** — source is the element's text content. When the file is written, `<` must be escaped as `&lt;` and `&` as `&amp;` (the importer reads `textContent`, which auto-decodes):
+
+```html
+<note-diagram type="mermaid" data-width="420" data-title="Phishing attack flow">
+flowchart LR
+  A["Attacker sends email"] --> B["User clicks link"]
+  B --> C["Fake login page"]
+  C --> D["Credentials stolen"]
+</note-diagram>
+```
+
+**SVG** — one inline `<svg>` child (sanitized per §10.4), stays vector:
+
+```html
+<note-diagram type="svg" data-width="260" data-height="120">
+  <svg viewBox="0 0 260 120" xmlns="http://www.w3.org/2000/svg"> ... </svg>
+</note-diagram>
+```
+
+**Excalidraw** — element text content is the JSON of a standard Excalidraw scene (HTML-escaped):
+
+```html
+<note-diagram type="excalidraw">
+{ "type": "excalidraw", "version": 2, "source": "noteforge",
+  "elements": [ ... ], "appState": { "viewBackgroundColor": "#ffffff" },
+  "files": { "id0": { "mimeType": "image/png", "dataURL": "data:..." } } }
+</note-diagram>
+```
+
+**Type-selection contract for generators:** Mermaid if the diagram is semantic (flow, sequence, architecture, ER, state); SVG if precise visual control is needed and Mermaid can't reproduce it; Excalidraw if the user needs free-form editing. Fidelity wins over Mermaid-fanaticism.
+
+### 5.7 Validation Rules (import fails if violated)
+
+1. Parses as HTML; contains exactly one `<note-document>` with ≥ 1 `<note-page>`.
+2. Every page has integer `data-width`/`data-height` in 200–5000.
+3. Page numbers are unique and re-sequenced 1..N on import.
+4. `data-title` non-empty (fallback: `<title>`, then filename).
+5. File within size limits (§3.2).
+6. No `<script>`, no external stylesheets/scripts (§10). External resources cause a **warning + stripping**, never silent dependency.
+7. Mermaid/Excalidraw sources syntactically checked (client render test / JSON parse) — failures are **warnings with per-diagram flag**, import still allowed.
+
+### 5.8 Complete Fixture A — `fixtures/minimal.note.html` (must ship with the repo and pass all tests)
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="note-format" content="visual-notes/1">
+<title>Cybersecurity Notes — Sample</title>
+<style>
+  .note-page { font-family: 'Caveat', 'Comic Sans MS', cursive; color: #1f2933; padding: 48px; box-sizing: border-box; }
+  .q-card { border: 2px solid #f59e0b; border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; background: #fffdf5; }
+  .q-num { display: inline-block; background: #f59e0b; color: #fff; border-radius: 8px; padding: 2px 10px; font-weight: 700; }
+  .hl { background: #fef08a; border-radius: 4px; padding: 0 4px; }
+  .kw { color: #0e7490; font-weight: 700; }
+</style>
+</head>
+<body>
+<note-document data-title="Cybersecurity Notes — Sample" data-version="1">
+  <note-page data-page="1" data-width="900" data-height="1270" data-background="#fdf6e3">
+
+    <note-title data-align="center">🔐 Top Cybersecurity Interview Questions</note-title>
+
+    <note-question number="37">
+      <note-heading level="2">What is the <span class="hl">CIA Triad</span>?</note-heading>
+      <note-list type="bullet">
+        <note-item><span class="kw">Confidentiality</span> — only authorized parties can read data</note-item>
+        <note-item><span class="kw">Integrity</span> — data is not tampered with</note-item>
+        <note-item><span class="kw">Availability</span> — systems are accessible when needed</note-item>
+      </note-list>
+      <note-callout type="tip" title="Exam tip">If a question mentions privacy → Confidentiality. Tampering → Integrity. Downtime → Availability.</note-callout>
+    </note-question>
+
+    <note-question number="2">
+      <note-heading level="2">How does a <span class="hl">MITM attack</span> work?</note-heading>
+      <note-diagram type="mermaid" data-width="620" data-title="MITM attack flow">
+flowchart LR
+  A["Victim"] --&gt;|"intercepted"| M["Attacker"]
+  M --&gt;|"relays"| S["Server"]
+      </note-diagram>
+    </note-question>
+
+  </note-page>
+</note-document>
+</body>
+</html>
+```
+
+**Fixture B (`fixtures/full.note.html`)** must additionally cover: 2 pages, `<note-table>` (symmetric vs asymmetric encryption comparison), `<note-diagram type="svg">`, `<note-diagram type="excalidraw">` (2 rectangles + arrow), `<note-definition>`, `<note-code>`, `<note-divider>`, `<note-spacer>`, an absolutely positioned element (`data-x="600" data-y="40"`), `<note-image>` with a tiny data-URI PNG, a check list, and a numbered list.
+
+**Fixture C (`fixtures/malicious.note.html`)** must contain every attack vector in §10.6 and must import safely with all vectors stripped.
+
+---
+
+## 6. Internal Document Model (TypeScript)
+
+Store this as JSONB. All entities carry stable IDs (`el_`, `pg_`, `dgm_` + nanoid(8)). IDs regenerate on duplication.
+
+```ts
+type RichText = string; // sanitized inline HTML only (§5.4 allowlist)
+type ElementType = 'title'|'heading'|'paragraph'|'list'|'table'|'callout'|'definition'
+  | 'code'|'quote'|'question'|'diagram'|'image'|'divider'|'spacer'|'html';
+
+interface BaseElement {
+  id: string; type: ElementType;
+  classes: string[];                  // preserved class names
+  style: Record<string, string>;      // parsed inline style
+  x?: number; y?: number; w?: number; h?: number; z?: number; // absolute layout
+}
+
+interface TextElement extends BaseElement {
+  type: 'title'|'heading'|'paragraph'|'quote'|'definition';
+  html: RichText; level?: 1|2|3; align?: 'left'|'center'|'right';
+  term?: string; cite?: string;
+}
+interface ListElement extends BaseElement {
+  type: 'list'; listType: 'bullet'|'check'|'numbered'; start?: number;
+  items: { id: string; html: RichText; checked?: boolean; marker?: string }[];
+}
+interface TableElement extends BaseElement {
+  type: 'table'; caption?: string;
+  rows: { id: string; cells: { id: string; html: RichText; head: boolean;
+          colspan?: number; rowspan?: number }[] }[];
+}
+interface CalloutElement extends BaseElement {
+  type: 'callout'; variant: 'info'|'warning'|'tip'|'danger'|'success';
+  title?: string; html?: RichText; children?: AnyElement[];
+}
+interface CodeElement extends BaseElement { type: 'code'; code: string; language?: string }
+interface QuestionElement extends BaseElement { type: 'question'; number?: number; children: AnyElement[] }
+interface DiagramElement extends BaseElement {
+  type: 'diagram'; diagramType: 'mermaid'|'svg'|'excalidraw';
+  source: string;            // mermaid source | svg markup | excalidraw scene JSON string
+  width?: number; height?: number; title?: string;
+  renderedSvg?: string;      // render cache (mermaid/excalidraw) — updated whenever source changes
+}
+interface ImageElement extends BaseElement {
+  type: 'image'; src: string;  // data: URI or asset://<id>
+  alt?: string; width?: number; height?: number; caption?: string;
+}
+interface DividerElement extends BaseElement { type: 'divider'; variant: 'solid'|'dashed'|'dotted' }
+interface SpacerElement extends BaseElement { type: 'spacer'; height: number }
+interface HtmlBlockElement extends BaseElement { type: 'html'; html: string }
+
+type AnyElement = TextElement|ListElement|TableElement|CalloutElement|CodeElement
+  |QuestionElement|DiagramElement|ImageElement|DividerElement|SpacerElement|HtmlBlockElement;
+
+interface NotePageModel { id: string; number: number; width: number; height: number;
+  background?: string; elements: AnyElement[] }
+
+interface NoteDocumentModel {
+  schemaVersion: 1;
+  id: string; title: string; generator?: string; theme?: string;
+  fonts: string[];     // every font-family name detected in CSS/inline styles
+  css: string;         // SANITIZED + SCOPED document stylesheet (§10.5)
+  pages: NotePageModel[];
+}
+```
+
+---
+
+## 7. Database Schema (Prisma)
+
+```prisma
+model User {
+  id        String   @id @default(cuid())
+  email     String?  @unique
+  name      String?
+  documents Document[]
+  createdAt DateTime @default(now())
+}
+
+model Document {
+  id              String   @id @default(cuid())
+  ownerId         String?
+  owner           User?    @relation(fields: [ownerId], references: [id])
+  title           String
+  slug            String   @unique
+  currentRevision Int      @default(1)   // optimistic concurrency counter
+  draft           Json                    // NoteDocumentModel working copy
+  draftUpdatedAt  DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  versions        DocumentVersion[]
+  publications    Publication[]
+  originalFiles   OriginalFile[]
+  referenceImages ReferenceImage[]
+}
+
+model DocumentVersion {
+  id         String   @id @default(cuid())
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId String
+  number     Int
+  label      String?              // e.g. "AI Generated", "Fixed Question 3"
+  snapshot   Json                 // immutable NoteDocumentModel
+  createdAt  DateTime @default(now())
+  @@unique([documentId, number])
+}
+
+model Publication {
+  id             String    @id @default(cuid())
+  document       Document  @relation(fields: [documentId], references: [id])
+  documentId     String
+  versionId      String
+  versionNumber  Int
+  slug           String    @unique
+  seoTitle       String
+  seoDescription String
+  isActive       Boolean   @default(true)
+  publishedAt    DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model OriginalFile {
+  id         String   @id @default(cuid())
+  document   Document @relation(fields: [documentId], references: [id])
+  documentId String
+  filename   String   // e.g. top-50-cybersecurity-interview-questions.note.html
+  mimeType   String
+  sizeBytes  Int
+  sha256     String
+  storageKey String
+  createdAt  DateTime @default(now())
+}
+
+model ReferenceImage {
+  id         String   @id @default(cuid())
+  document   Document @relation(fields: [documentId], references: [id])
+  documentId String
+  storageKey String
+  mimeType   String
+  createdAt  DateTime @default(now())
+}
+
+model Asset {                        // editor-added images, custom fonts (Phase 6)
+  id         String   @id @default(cuid())
+  ownerId    String?
+  kind       String   // 'image' | 'font'
+  mimeType   String
+  storageKey String
+  createdAt  DateTime @default(now())
+}
+```
+
+**Storage abstraction** (`src/server/storage.ts`): `put(key, bytes, contentType)`, `get(key)`, `delete(key)`. Local driver writes under `STORAGE_LOCAL_DIR` and serves bytes via `GET /api/assets/[key]`; S3 driver uses presigned or direct GET. Storage keys look like `docs/{documentId}/original/{sha256}.note.html`, `docs/{documentId}/reference/{id}.jpg`, `assets/{assetId}.png`.
+
+---
+
+## 8. API Specification
+
+All JSON unless noted. Errors: `{ "error": { "code": "STRING_CODE", "message": "user-friendly text", "details": [...] } }`. Never leak stack traces.
+
+| Method | Route | Body / Params | Response | Notes |
+|---|---|---|---|---|
+| POST | `/api/import` | multipart: `file` (.note.html), optional `referenceImage` | `{ documentId, slug, pageCount, warnings: Warning[] }` | Runs full §9 pipeline; creates Document + Version 1 labeled "AI Generated"; stores original + reference |
+| GET | `/api/documents` | `?q=&page=` | paginated list `{id,title,slug,updatedAt,publishedVersion?,thumbnailStatus}` | library grid |
+| GET | `/api/documents/:id` | — | `{id,title,slug,currentRevision,latestVersion,publishedPublication?}` | meta only |
+| PATCH | `/api/documents/:id` | `{title?}` | `{ok}` | rename |
+| DELETE | `/api/documents/:id` | — | `{ok}` | cascade delete + storage cleanup |
+| GET | `/api/documents/:id/draft` | — | `{revision, document: NoteDocumentModel}` | |
+| PUT | `/api/documents/:id/draft` | `{revision, document}` | `{revision}` or **409** `{serverRevision}` | optimistic concurrency (§13.4) |
+| POST | `/api/documents/:id/versions` | `{label}` | `{number}` | snapshots current draft |
+| GET | `/api/documents/:id/versions` | — | `[{number,label,createdAt}]` | |
+| GET | `/api/documents/:id/versions/:n` | — | `{number,label,snapshot}` | |
+| POST | `/api/documents/:id/versions/:n/restore` | — | `{newVersionNumber}` | creates a NEW version from old snapshot (history never rewritten) |
+| POST | `/api/documents/:id/publish` | `{versionNumber?, slug?, seoTitle?, seoDescription?}` | `{slug, url}` | validates (§14.2); defaults slug = slugify(title) with `-2`,`-3`… suffix on collision |
+| POST | `/api/documents/:id/unpublish` | — | `{ok}` | sets publication `isActive=false`; `/notes/:slug` → 404 |
+| POST | `/api/assets` | multipart image | `{id, url}` | returns `asset://`-resolvable id |
+| GET | `/api/assets/:key` | — | bytes | local storage driver |
+| GET | `/api/notes/:slug` | — | published `NoteDocumentModel` + publication meta | public |
+| POST | `/api/documents/:id/ai/generate` *(Phase 5)* | multipart reference image + `{provider}` | runs import pipeline | explicit button only |
+| POST | `/api/documents/:id/ai/edit` *(Phase 5)* | `{target:{pageId,elementId}, instruction}` | updated element | partial edit, undoable (§23) |
+
+---
+
+## 9. Import Pipeline (server-side)
+
+Execute in order. Any hard failure → 400 with per-page/per-element details.
+
+```
+1. Receive file → size/type check (extension `.note.html` or `.html`, ≤ MAX_NOTE_FILE_MB)
+2. SHA-256 + store original bytes (immutable) → OriginalFile row
+3. Parse with parse5 → DOM
+4. Structural validation (§5.7)
+5. Sanitize + transform (§10) → allowlisted tree
+6. Extract <style> → sanitize CSS → scope/prefix (§10.5)
+7. Walk <note-page> elements → build NoteDocumentModel
+   - keep original element ids when unique, else generate
+   - extract rich text (sanitized inline HTML strings)
+   - extract diagram sources; JSON.parse excalidraw (zod-loose validate)
+   - collect font-family names → document.fonts
+8. Strip/sanitize every data: URI image (verify mime prefix image/*, size cap)
+9. Create Document (draft = model), Version 1 snapshot, ReferenceImage if provided
+10. Return { documentId, warnings }
+```
+
+**Warnings** (non-blocking, shown in Import Review): `FONT_UNAVAILABLE`, `EXTERNAL_RESOURCE_STRIPPED`, `UNSUPPORTED_ELEMENT_PRESERVED`, `BLOCK_IN_TEXT_MOVED`, `MERMAID_INVALID` (per-diagram), `IMAGE_OVERSIZE_STRIPPED`, `CSS_RULE_DROPPED`.
+
+### 9.1 Import Review Screen (`/documents/:id/review`)
+
+- Side-by-side: left = reference image (or "no reference image"), right = rendered page 1 (Shared Renderer).
+- Warning list with details; per-Mermaid failure shows inline error placeholder with **Edit Source** shortcut.
+- Page navigation to review all pages.
+- Buttons: **[Accept & Edit]** → `/documents/:id/edit`; **[Delete & Re-upload]**.
+- Client-side Mermaid render-test of all diagrams happens here.
+
+---
+
+## 10. Sanitization & Security (exact rules)
+
+**Uploaded HTML is untrusted input. Never inject it into the app origin without the following passes.** Implement as a parse5 tree-walker (primary) + DOMPurify run on serialized output (safety net).
+
+### 10.1 Allowed Tags (page content)
+
+`note-document, note-page, note-title, note-heading, note-question, note-paragraph, note-list, note-item, note-callout, note-definition, note-table, note-code, note-quote, note-diagram, note-image, note-divider, note-spacer` + pass-through set: `div, span, p, h1–h6, ul, ol, li, table, thead, tbody, tr, th, td, figure, figcaption, blockquote, pre, code, hr, br, strong, b, em, i, u, s, mark, small, sup, sub, a, img` + sanitized `svg` subtree (§10.4) + standard `table` children inside `note-table`.
+
+**Everything else is dropped** (children preserved where sensible): `script, iframe, object, embed, form, input, button, select, textarea, link, meta, base, style*` (*the single `<style>` in head is processed per §10.5), `audio, video, canvas, math, template, frame, frameset, portal`.
+
+### 10.2 Allowed Attributes
+
+- Global: `id, class, style, data-*, title, alt, role, aria-*`
+- `a`: `href` (http/https only, never `javascript:`; renderer forces `target="_blank" rel="noopener noreferrer"`)
+- `img`: `src` (`data:image/*` only at import), `width, height`
+- `table` cells: `colspan, rowspan`
+- `note-*`: the `data-*`/documented attributes from §5.3
+
+**Always removed:** every `on*` event handler, `srcset`, `formaction`, `xlink:href` (external), `href`/`src` with any scheme other than http/https/data (per-context), `style` values matching §10.5-banned constructs.
+
+### 10.3 Style Attribute Sanitization
+
+Parse declarations (postcss inline parser); drop declarations containing `url()` with non-`data:` schemes, `expression(`, `behavior`, `-moz-binding`, or any `var()` referencing undefined custom properties (keep var() if defined in doc CSS — simplest: keep all `var()`, they resolve to nothing harmful). Rewrite `position: fixed` → `position: absolute`.
+
+### 10.4 SVG Sanitization (inside `note-diagram type="svg"` and any `svg` in content)
+
+Allowed: `svg, g, defs, title, desc, path, rect, circle, ellipse, line, polyline, polygon, text, tspan, marker, linearGradient, radialGradient, stop, pattern, clipPath, mask, filter, feGaussianBlur, feOffset, feBlend, feColorMatrix, feFlood, feComposite, feMerge, feMergeNode, use`.
+Attributes: geometry/presentation attributes + `viewBox, xmlns, xmlns:xlink, fill, stroke, transform, opacity, clip-path, mask, filter, d, x, y, x1, y1, x2, y2, cx, cy, r, rx, ry, width, height, points, text-anchor, dominant-baseline, font-family, font-size, font-weight, offset, stop-color, stop-opacity, gradientUnits, markerWidth, markerHeight, refX, refY, orient, id, class, style`.
+**Removed:** `script, foreignObject, animate with event begin, external href/xlink:href, all on* handlers, javascript: anywhere.` `use href` only with internal `#id` references that exist in the same SVG.
+
+### 10.5 Document CSS Processing
+
+Run through postcss at import:
+
+1. Drop `@import` and any at-rule fetching remote content.
+2. Drop `@font-face` whose `src` is a remote URL (warning). Keep `@font-face` with `data:` src if total CSS stays under cap, else drop with warning.
+3. Drop declarations: `behavior`, `-moz-binding`, anything containing `url(http…)` (warning `EXTERNAL_RESOURCE_STRIPPED`), `expression(`.
+4. Rewrite `position: fixed` → `absolute`.
+5. Remap `html`, `body`, `:root` selectors → `.note-root-{documentId}`.
+6. Prefix **every** selector with `.note-root-{documentId} ` (handle `@media`, `@supports`, `@keyframes` — keyframes names get a doc prefix `{docId}-` and references rewritten).
+7. Store result in `NoteDocumentModel.css`.
+
+### 10.6 Malicious Fixture Must-Prove (security test suite)
+
+`fixtures/malicious.note.html` contains: `<script>alert(1)</script>`, `<img src=x onerror=alert(1)>`, `<a href="javascript:alert(1)">`, `<style>@import url('http://evil.com/x.css')</style>`, `<iframe src="http://evil.com">`, `<svg onload="alert(1)"><script>…</script></svg>`, `<a xlink:href="javascript:...">` in SVG, `background:url(javascript:alert(1))`, `<form action="http://evil.com">`, `@font-face{src:url(http://evil.com/f.woff)}`, `position:fixed` overlay, external `<img src="http://evil.com/x.png">`, `<meta http-equiv="refresh">`. **Test asserts every vector is neutralized** and the document still imports with the legitimate content intact.
+
+### 10.7 Runtime Security
+
+- Mermaid: `mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' })`.
+- Excalidraw scene JSON: validate structure (zod), cap sizes, ensure all `files` entries are `data:` URLs.
+- Rich text rendered via `dangerouslySetInnerHTML` **only** from strings that passed the §5.4 sanitizer at import and are re-sanitized on every edit commit (editor paste = plain text only).
+- CSP header on public pages: `default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; script-src 'self'`.
+
+---
+
+## 11. Shared Renderer (single source of truth)
+
+`src/components/renderer/NoteRenderer.tsx` + element components. **Used verbatim by the editor canvas, preview mode, and the public viewer.** Modes differ only in wrapper chrome — never in note rendering.
+
+### 11.1 API
+
+```tsx
+<NoteRenderer
+  document={NoteDocumentModel}
+  page={number | 'all'}        // viewer uses single page + nav; editor/preview can scroll all
+  scale={number}               // 0.25–2
+  mode={'edit'|'preview'|'public'}
+  editable?: boolean           // edit mode only: attaches selection/edit handlers
+/>
+```
+
+### 11.2 Structure
+
+```tsx
+<div className={`note-root-${doc.id}`}>          // isolated scope root
+  <style>{uaRestoreCss /* §11.3 */}{doc.css}</style>
+  <div className="note-scale" style={{ transform:`scale(${scale})`, transformOrigin:'top left' }}>
+    <div className="note-page" style={{ width, height, background, position:'relative', overflow:'hidden' }}>
+      {elements.map(el => <NoteElementRenderer element={el} mode={...} />)}
+    </div>
+  </div>
+</div>
+```
+
+Absolute elements render with `position:absolute; left/top/width/height/zIndex` from `x/y/w/h/z`. Flow elements render in array order.
+
+### 11.3 Tailwind Isolation
+
+Tailwind preflight resets (`h1{font-size:inherit}` etc.) would corrupt notes relying on browser defaults. Ship `note-ua-restore.css` — a scoped mini-reset under `.note-root-{id}` restoring: default block margins for `p, h1–h6, ul, ol, blockquote, figure`, `list-style` for `ul/ol`, `font-weight` for `strong/th/h1–h6`, `em/i` italic, `u` underline, table `border-collapse`, `img{max-width:none}`. Injected **before** the document CSS so the note's own rules always win.
+
+### 11.4 Element → Rendering
+
+- Text elements: `<div class={classes} style={style} dangerouslySetInnerHTML={{__html: html}} />` with semantic tag mapping for public SEO: `title→h1 (visually as styled), heading L1→h2, L2→h3, L3→h4`, `paragraph→p`, `quote→blockquote`, list items → `li`. Style via classes so tag choice doesn't change appearance.
+- `question`: container div (classes/style) + numbered badge if `number` set; children rendered recursively.
+- `list`: `ul`/`ol` (numbered uses `start`), check lists render checkbox glyph `☑/☐` from `checked`.
+- `table`: real `<table><thead><tbody>` markup.
+- `callout`: styled container + title bar + rich text or children.
+- `code`: `<pre><code>`.
+- `diagram`:
+  - `mermaid`: if `renderedSvg` cache present → inject cached SVG; else lazy-render via IntersectionObserver → dynamic `import('mermaid')` → `mermaid.render` → cache on element (editor writes cache back to draft on render).
+  - `excalidraw`: inject `renderedSvg` (always present after any save; if missing, render placeholder + lazy client render from scene).
+  - `svg`: inject sanitized source directly (vector, never rasterized).
+  - All diagrams wrapped in `<figure>` with `<figcaption>{title}</figcaption>` when `title` present.
+- `image`: `<img src={resolveSrc(src)} alt={alt} />`; `resolveSrc`: `data:` → as-is; `asset://id` → `/api/assets/{id}`.
+- `divider`, `spacer`, `html` passthrough: trivial.
+
+### 11.5 Zoom & Responsive
+
+- Zoom = pure CSS transform on the scale wrapper; a sizer div with `width*height*scale` keeps scrollbars correct.
+- Public viewer computes `scale = min(1, (viewportWidth - 32) / pageWidth)`; pinch-zoom allowed on top; **never reflow** page content.
+- Editor zoom presets: 50 / 75 / 100 / 150 / Fit.
+
+---
+
+## 12. Editor (`/documents/:id/edit`) — desktop-first, usable ≥ 768px
+
+### 12.1 Layout
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ ← Back   [Title (editable)]   status-chip   Preview  Publish │
+├────────────┬─────────────────────────────────────────────────┤
+│ PAGES      │                                                 │
+│ thumbs     │            CANVAS (scroll, zoom, pan)           │
+│ (lazy)     │       current page ±1 rendered; others          │
+│            │       show correctly-sized placeholders         │
+│ + Add Page │                                                 │
+│ ────────── │   bottom-right floating zoom toolbar            │
+│ Content    │   (50/75/100/150/Fit) + Content Size presets    │
+│ Size       │                                                 │
+│ S M L Cust │                                                 │
+└────────────┴─────────────────────────────────────────────────┘
+```
+
+- **Status chip**: `Saved` / `Saving…` / `Unsaved changes` / `Save failed — retry`.
+- **Content Size** (Small/Medium/Large/Custom) = zoom presets 85% / 100% / 115% / custom slider (50–200%). Scales note content only; app chrome untouched.
+- Mobile (< 768px): pages panel and properties become bottom sheets / drawers.
+
+### 12.2 Selection & Element Actions
+
+Click element → 2px outline + floating contextual toolbar near element: `[Edit] [Duplicate] [Delete] [⋯]` where `⋯` opens advanced menu (Layer ▸ Bring Forward/Send Backward/To Front/To Back · Move to page… · Copy · View Source). Double-click text element → inline edit. Esc deselects. Container elements (`question`, `callout` with children) select as a whole; children selectable with a second click into the container.
+
+### 12.3 Text Editing
+
+- `contentEditable` on the rendered element (suppress React warnings); paste forced to plain text.
+- On selection inside editable text, show a floating inline toolbar: **B I U Highlight ∨color Size ∨family Link Align List**.
+- Commit on blur/Esc: sanitize new HTML (§5.4) → push undo snapshot → mark dirty → autosave.
+- Only the edited element changes; nothing else on the page re-renders differently.
+
+### 12.4 Add Menu
+
+`[+ Add]` (top of canvas + after selection): Text, Heading, Question, List (bullet/check/numbered), Callout (5 variants), Table (2×2 starter), Code, Quote, Definition, Divider, Spacer, Image (upload → `/api/assets` → `asset://`), **Diagram ▸ Mermaid / SVG / Excalidraw**. New elements insert after the selected element (or at page end) and inherit only their base classes — no forced theme.
+
+### 12.5 Advanced Panel (per selection; collapsed by default)
+
+Sections: Position & Size (abs elements; drag/resize handles on canvas), Typography (family/size/weight/color/line-height/letter-spacing), Spacing (margin/padding), Layer (z-index), **CSS** (raw inline-style editor), **Source** (read-only serialized fragment of the element).
+
+### 12.6 Page Management
+
+Thumbnails (120px, rendered by Shared Renderer, debounced re-render on page change, cached in memory per revision). Actions per page: duplicate (deep clone + regenerate ALL ids), delete (confirm; min 1 page), reorder (drag). Move element to another page via `⋯ → Move to page…`. Add Page (blank page cloning doc default dimensions/style or duplicating current).
+
+### 12.7 Undo / Redo
+
+- Store: `past: NoteDocumentModel[]`, `present`, `future: []`, cap **50** snapshots (`structuredClone`).
+- Text typing coalesces: consecutive edits to the same element within 800ms = one entry.
+- Covers: text edits, add/delete/duplicate/move/reorder elements, style/attr changes, diagram source changes, page ops.
+- Shortcuts: `Ctrl/Cmd+Z`, `Ctrl/Cmd+Shift+Z` / `Ctrl+Y`.
+
+### 12.8 Autosave & Safety (§ "last known good")
+
+- Dirty → debounce 1500ms → `PUT /draft {revision, document}`.
+- Keep a **last-known-good** snapshot in memory + mirror to IndexedDB (`noteforge-draft-{docId}`) for crash recovery; on editor load, if IndexedDB copy is newer than server draft, offer `[Restore local copy] [Discard]`.
+- Failed save ×3 → banner: *"Couldn't save. Your changes are safe in this tab. [Retry] [Download backup .note.html]"* (backup uses the §24 serializer).
+
+### 12.9 Conflict Handling
+
+- `PUT` returns 409 when `serverRevision ≠ clientRevision` → modal: *"This document was modified in another tab or device."* → `[Reload latest] [Keep my changes] [Compare]` (Compare = side-by-side text diff of the two drafts).
+- `BroadcastChannel('doc-{id}')` notifies sibling tabs on every save.
+
+---
+
+## 13. Diagram Editors
+
+Click any diagram → floating `[Edit Diagram]` → opens the correct editor by `diagramType`. Each is a **full-screen modal, focused, no app chrome**, with Save/Cancel; after Save you return to the note editor automatically.
+
+### 13.1 Mermaid Editor
+
+Left: monospace textarea (source). Right: live preview (debounce 500ms, `mermaid.render`). Parse error shown inline under the source with line info. Footer: `[Cancel] [Save]`. On Save: update `source`, regenerate `renderedSvg` cache, push undo, dirty.
+
+### 13.2 SVG Panel
+
+Minimum v1: preview + source textarea (raw SVG, sanitized on save), plus canvas-level Move/Resize/Delete/Duplicate (§12.2 handles move/resize for abs elements; for flow diagrams, size via advanced panel) and **Replace SVG** (paste new). Edit-text/color/shape editing: best-effort via source editing. Original always recoverable through undo/version history.
+
+### 13.3 Excalidraw Editor
+
+- Lazy-load `@excalidraw/excalidraw` chunk; `initialData = JSON.parse(scene)`; standard Excalidraw UI inside the modal (its own undo/redo/tools are fine here — it's the focused diagram experience).
+- Footer: `[Cancel] [Save]`.
+- On Save: serialize `{elements, appState, files}` → `source`; render `exportToSvg(...)` → `renderedSvg`; push undo; dirty.
+
+---
+
+## 14. Versioning, Draft/Published, Publishing
+
+### 14.1 Model
+
+- Draft = mutable working copy (autosaved). Versions = immutable snapshots. Publishing binds a version to a slug.
+- Header shows: `Published: v4 · Draft: v5*` (asterisk = unsaved changes).
+
+### 14.2 Save & Publish Flows
+
+**Save Version** button → optional label prompt → `POST /versions` → toast "Version 5 saved".
+
+**Publish** button → modal:
+1. If draft has unsaved changes → offer "Save draft as new version first?" (auto-creates).
+2. Fields: Version selector (default latest), Slug (prefilled `slugify(title)`, live-validated `^[a-z0-9-]{3,80}$`, collision → auto `-2`), SEO Title (default doc title), SEO Description (default: first 160 chars of page-1 plain text).
+3. `[Publish]` → validate document (schema zod pass; no broken mermaid without confirmation) → create/replace `Publication` → toast with public URL.
+
+Publishing **never regenerates** content, never calls AI, and previous publications/versions are untouched.
+
+### 14.3 Version History Page (`/documents/:id/versions`)
+
+List (number, label, date, `Published` badge). Actions: **Preview** (read-only render), **Restore** (creates new version from snapshot — history intact), **Publish this version**. **Compare** picker: two versions → side-by-side page rendering with synced scroll + per-page word-level text diff.
+
+---
+
+## 15. Public Viewer (`/notes/[slug]`) & Preview
+
+### 15.1 Preview Mode
+
+Editor `Preview` toggle renders the current draft through **the same `NoteRenderer`** at `mode='preview'`, in a clean chrome (no edit controls), all pages scrollable. If it renders differently in public → it's a bug in renderer reuse.
+
+### 15.2 Public Page
+
+- Server Component: fetch `Publication` (isActive) → version snapshot → SSR real HTML via `NoteRenderer mode='public'` (mermaid hydrates lazily client-side; excalidraw/svg render from cache/markup — SSR-safe).
+- SEO: `<title>{seoTitle}</title>`, meta description, visually-hidden `<h1>{doc title}` (page's own `note-title` renders as styled h1 — use only one visible), Open Graph (og:image = reference image if present), JSON-LD `Article {headline, description, image, datePublished}`. All note text is real selectable HTML — never an image of the note.
+- Chrome (minimal, fixed bottom-center): `◀ 3 / 12 ▶` + thumbnails toggle (drawer of lazy page thumbs) + optional fullscreen. Keyboard ←/→; swipe on touch.
+- Responsive: page scales to fit width (§11.5); no reflow.
+- 404 for unknown/inactive slug.
+- `generateStaticParams`-style caching acceptable; revalidate on republish.
+
+---
+
+## 16. Error Handling & Copy (use these strings)
+
+| Situation | UI |
+|---|---|
+| Import structural failure | *"Import failed. Page 3 contains unsupported content. [View Details]"* → expandable per-element list |
+| Font unavailable | *"Font “X” is unavailable. The note will use a fallback font. [Continue]"* (fallback chain per §17) |
+| Mermaid parse error (editor) | Inline: *"Diagram error on line 4: …"*, source preserved |
+| Save failure | §12.8 banner |
+| Conflict | §12.9 modal |
+| Publish validation | *"Fix 2 issues before publishing: …"* |
+
+Never show stack traces. Log details server-side with a correlation id shown as small "ref: xxxx" in an expandable details area.
+
+---
+
+## 17. Fonts
+
+- At import, compute `document.fonts` (all `font-family` values from CSS + inline styles).
+- **Approved Google Fonts whitelist** (app injects these via app-controlled `<link>`; docs may not load fonts themselves): Caveat, Patrick Hand, Kalam, Indie Flower, Shadows Into Light, Architects Daughter, Comic Neue, Fira Code, JetBrains Mono, Inter, Roboto, Merriweather, Lora, Playfair Display, Poppins, Montserrat, Source Sans 3, Space Grotesk.
+- Detection: any family not in whitelist and not a CSS generic (`serif, sans-serif, monospace, cursive, fantasy, system-ui`) → warning `FONT_UNAVAILABLE` + automatic fallback mapping (best-effort: names containing "hand/script/Comic" → `Caveat`; "mono/code" → `JetBrains Mono`; else `Inter`) **appended to the font stack** (original name kept first so custom font uploads later light up automatically).
+- Custom font upload (register font family → Asset) = Phase 6.
+
+---
+
+## 18. Performance
+
+- Editor renders only current page ±1; others are dimension-correct placeholders.
+- Page thumbnails lazy + debounced + cached per revision.
+- Mermaid renders on IntersectionObserver; `mermaid` and `excalidraw` are dynamic imports (never in the public page's critical path for excalidraw).
+- Images `loading="lazy"`; data URIs over 512 KB lazy-mounted.
+- Undo snapshots capped; autosave payload is the full doc JSON (≤ ~2 MB typical — acceptable).
+- Public page: SSR HTML + minimal client JS (renderer hydration only).
+
+## 19. Accessibility
+
+Semantic headings via renderer tag mapping (§11.4); all images get `alt` (importer flags empty alt on non-decorative images as warning); diagrams expose `title` as figcaption + `role="img"` + `aria-label`; full keyboard nav in editor (Tab through elements, Enter to edit, Esc out, arrows to move abs elements); focus-visible styles on all app controls; public viewer arrow-key paging; contrast: app chrome ≥ WCAG AA (note content contrast is authorial — preserve fidelity).
+
+---
+
+## 20. Export (Phase 6, serializer ships in Phase 1)
+
+- **`.note.html` export** — `src/lib/note-format/serialize.ts` produces a spec-compliant file (§5) from the Internal Model. Escape rules: rich text re-sanitized; mermaid source `<`→`&lt;`, `&`→`&amp;`; excalidraw JSON escaped; `asset://` srcs inlined as data URIs when possible (fetch from storage). **Round-trip test is mandatory from Phase 1.**
+- **PDF**: per-page print CSS (`@page { size: {w}px {h}px; margin:0 }`, page-break between pages) via browser print; headless puppeteer optional.
+- **PNG (per page)**: puppeteer screenshot of Shared Renderer at scale 1 (Phase 6).
+
+---
+
+## 21. Reference Comparison (Phase 6)
+
+Editor action `[Compare with Original]`: overlay slider or side-by-side of stored reference image ↔ current render, per page. (Reference image is captured at import — §9.)
+
+---
+
+## 22. Themes & Design System (Phase 6)
+
+Ship one starter theme pack ("Handwritten Study Notes": fonts, colors, callout styles, question-card style) usable when creating **new** notes or adding elements. Importing a `.note.html` always preserves its own design — themes never auto-apply to imports.
+
+---
+
+## 23. AI Integration (Phase 5 — entirely optional, explicit)
+
+### 23.1 Provider Abstraction
+
+```ts
+interface AIProvider {
+  id: 'claude' | 'glm';
+  generateNote(input: { referenceImage: Buffer; mimeType: string; extraPrompt?: string }):
+    Promise<{ noteHtml: string }>;
+}
+// ClaudeProvider → Anthropic Messages API (vision)
+// GLMProvider → GLM vision API
+// Both return raw .note.html text which MUST flow through the standard import pipeline.
+```
+
+### 23.2 Generation Prompt Template (embed verbatim in `src/lib/ai/prompts.ts`)
+
+> You are a note reconstruction engine. You will receive a reference image of a visual study note. Produce a single, self-contained `.note.html` file that **reconstructs** the note — do NOT redesign it.
+> Rules: (1) Extract ALL text accurately and preserve hierarchy (titles → questions → headings → bullets). (2) Recreate page dimensions from the image aspect ratio (width 900 or 1080). (3) Recreate typography, colors, borders, boxes, callouts, spacing, alignment, hand-drawn/decorative elements in CSS. (4) Rebuild diagrams: use `<note-diagram type="mermaid">` for semantic flows; `type="svg"` when Mermaid cannot reproduce the design; `type="excalidraw"` only when free-form editing matters. (5) Use the element vocabulary: note-document/note-page/note-title/note-heading/note-question/note-paragraph/note-list/note-item/note-callout/note-definition/note-table/note-code/note-quote/note-diagram/note-image/note-divider/note-spacer. (6) One `<style>` block, self-contained, no external resources, no scripts. (7) Escape `<` and `&` inside mermaid sources. (8) Return ONLY the HTML file.
+
+### 23.3 Explicit AI Actions (never automatic)
+
+`[AI Actions]` menu: *Regenerate selected section · Regenerate diagram · Improve typography · Recreate from reference image* — each shows exactly what will change, requires confirm, result flows through import validation, and is undoable. Partial edits target a single element (`/api/.../ai/edit`) and never rewrite the whole document silently.
+
+---
+
+## 24. Testing Strategy
+
+| Layer | Tool | Must cover |
+|---|---|---|
+| Unit — sanitizer | Vitest | Every vector in §10.6 (malicious fixture) + attribute/CSS/SVG allowlists |
+| Unit — parser | Vitest | Fixtures A & B → exact Internal Model assertions (ids, classes, styles, diagram sources, tables, abs positions) |
+| Unit — serializer | Vitest | `parse(serialize(parse(f))) === parse(f)` for A & B |
+| Unit — CSS scoping | Vitest | prefixing, body/html remap, @import/@font-face drops, fixed→absolute |
+| Unit — misc | Vitest | slugify + collision, revision conflict, font fallback mapping |
+| Component | RTL | renderer output per element type; editor selection/undo flows |
+| E2E golden path | Playwright | upload Fixture A → review → edit text → edit mermaid → add callout → save 2 versions → undo/redo → preview → publish → visit `/notes/slug` → assert title text present in SSR HTML → navigate pages → restore v1 |
+| E2E security | Playwright | malicious fixture import → assert no `script`/`on*`/`javascript:` in served public HTML |
+| Visual regression | Playwright screenshots | Fixture A & B pages: editor render ≡ preview render ≡ public render (pixel tolerance 0) |
+
+`package.json` scripts: `dev`, `build`, `test`, `test:e2e`, `db:push`, `seed` (imports fixtures via a small CLI).
+
+---
+
+## 25. Implementation Plan (build in this exact order)
+
+### Phase 1 — Foundation
+Scaffold (Next.js + TS + Tailwind + Prisma + auth w/ `DEV_SINGLE_USER`), storage abstraction, `.note.html` spec module (types + parser + sanitizer + CSS scoper + serializer + fixtures A/B/C), import API + Import Review screen, Shared Renderer (read-only), Document Library, basic public viewer reading a hand-published version, full unit tests incl. round-trip + malicious fixture.
+**Done when:** uploading fixtures A/B via UI produces a reviewable, warning-free (A) editable-looking render; C is neutralized; renderer unit+visual tests pass.
+
+### Phase 2 — Editing
+Editor shell (layout §12.1), selection + contextual toolbar, inline text editing + inline format toolbar, Add menu (text/heading/list/callout/table/code/quote/definition/divider/spacer), delete/duplicate, page management (thumbs, add/dup/reorder/delete), undo/redo, autosave + IndexedDB safety + conflicts, Preview mode, Save Version + Version History + Restore.
+**Done when:** golden-path e2e (minus publish) passes.
+
+### Phase 3 — Diagrams
+Mermaid render + editor modal + cache; SVG render + source/replace panel + move/resize; Excalidraw modal (lazy) + scene persistence + `exportToSvg` cache; image upload (`asset://`); layer controls; abs-element drag/resize.
+**Done when:** all three diagram editors save and round-trip through a version save/restore.
+
+### Phase 4 — Publishing
+Publish modal + validation + slugs, Publication model, `/notes/[slug]` SSR + SEO + JSON-LD + viewer nav + mobile scaling, unpublish/republish, version compare (render + text diff).
+**Done when:** full golden-path e2e incl. public SEO assertions passes; pixel-identical editor/preview/public screenshots.
+
+### Phase 5 — AI
+Provider abstraction + Claude + GLM, direct image → `.note.html` flow (upload image → choose provider → generate → lands in standard Import Review), AI Actions menu with confirm + undo, partial element edits.
+
+### Phase 6 — Advanced
+Reference comparison, themes, custom font upload, PDF/PNG export, OG-image generation, mobile editor drawers polish, multi-tab realtime sync beyond conflict detection.
+
+---
+
+## 26. Final Acceptance Checklist
+
+- [ ] Upload `.note.html` (drag & drop + picker); multi-page import; page dimensions/typography/colors/layout/callouts/diagrams preserved
+- [ ] Mermaid: renders, source editable in dedicated editor, updates live
+- [ ] SVG: stays vector; editable/replacable; move/resize
+- [ ] Excalidraw: scene stored (not screenshot); focused editor; save returns to note; renders from cached SVG publicly
+- [ ] Text: edit existing, add new (text/heading/question/lists/callouts/tables/code/diagrams/dividers), delete, duplicate, move/reorder; only changed parts change
+- [ ] Undo/redo across all operations; autosave + manual save + crash recovery
+- [ ] Version history: view, restore (non-destructive), compare, publish specific version
+- [ ] Draft ≠ Published; publishing is explicit, never calls AI, previous versions preserved
+- [ ] Preview & public viewer share the editor's renderer (verified pixel-identical)
+- [ ] Public page: real HTML text, SEO meta/JSON-LD, mobile scaling, page navigation `Page X / N`
+- [ ] Original `.note.html` + reference image preserved and downloadable
+- [ ] Import validation with friendly errors; full sanitization suite green (malicious fixture)
+- [ ] No uploaded JavaScript ever executes in app origin
+- [ ] `.note.html` export round-trips
+- [ ] Opening/refreshing a document always shows the last saved state — stable, no regeneration
+
+---
+
+## 27. Out of Scope (v1) — do not build
+
+Realtime collaborative editing, comments, analytics dashboard, payments, multi-language UI, offline PWA, embeddable widgets. Conflict detection (§12.9) covers the multi-tab/multi-device risk for v1.
+````
+
+**Notes on how to use this spec:**
+
+- **Feed it whole** to your coding agent — it's self-contained; the agent never needs the original requirements doc or images.
+- **Fixtures are the contract**: `fixtures/minimal.note.html`, `fixtures/full.note.html`, and `fixtures/malicious.note.html` (specs in §5.8/§10.6) should be written by the agent in Phase 1 and drive the parser, security, and visual-regression tests. The fixture content mirrors your attached cybersecurity notes (CIA Triad, MITM flow, handwritten styling, comparison tables).
+- **The two rules to enforce hardest during review**: one shared renderer (§11) and no silent AI calls (§1.1) — most architectural failure modes in this project come from violating those.
+
+Want me to also generate the three fixture files (A/B/C) as ready-to-drop-in code, or a Phase-1 starter repo structure with the parser skeleton?

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="note-format" content="visual-notes/1">
+<meta name="note-generator" content="fixture-author">
+<title>Cybersecurity Notes — Full Coverage Fixture</title>
+<style>
+  /* Full-coverage fixture stylesheet.
+     Deliberately targets semantic output tags (§11.4) and renderer base
+     classes (Appendix A.2) to lock the rendering contract. */
+  .note-page { font-family: 'Kalam', 'Comic Sans MS', cursive; color: #1f2933; padding: 44px; box-sizing: border-box; }
+  .note-title { font-family: 'Caveat', cursive; font-size: 46px; line-height: 1.1; color: #0e7490; margin: 0 0 6px; }
+  .q-card { border: 2px solid #0e7490; border-radius: 14px; padding: 16px 20px; margin: 0 0 22px; background: #ffffff; box-shadow: 3px 3px 0 rgba(14, 116, 144, .15); }
+  .hl { background: #fef08a; border-radius: 4px; padding: 0 4px; }
+  .kw { color: #b45309; font-weight: 700; }
+  .note-page table { border-collapse: collapse; width: 100%; font-family: 'Inter', sans-serif; font-size: 14px; margin: 10px 0; }
+  .note-page th { background: #0e7490; color: #ffffff; padding: 8px 10px; text-align: left; }
+  .note-page td { border: 1px solid #cbd5e1; padding: 8px 10px; background: #ffffff; }
+  code { font-family: 'JetBrains Mono', monospace; background: #f1f5f9; border-radius: 4px; padding: 1px 5px; font-size: .92em; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 14px 16px; border-radius: 10px; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+  .note-page blockquote { border-left: 4px solid #f59e0b; background: #fffbeb; margin: 12px 0; padding: 6px 14px; font-style: italic; }
+  .note-definition { border-left: 4px solid #16a34a; background: #f0fdf4; border-radius: 0 8px 8px 0; padding: 8px 14px; margin: 10px 0; }
+  .note-definition-term { font-weight: 700; color: #166534; }
+  .note-callout { border: 1.5px solid; border-radius: 10px; padding: 10px 14px; margin: 12px 0; font-family: 'Inter', sans-serif; font-size: 14px; }
+  .note-callout-title { font-weight: 700; margin-bottom: 2px; }
+  .note-callout--tip { background: #ecfdf5; border-color: #10b981; }
+  .note-callout--info { background: #eff6ff; border-color: #3b82f6; }
+  .note-callout--warning { background: #fffbeb; border-color: #f59e0b; }
+  .note-page hr { border: none; border-top: 2px dashed #94a3b8; margin: 18px 0; }
+</style>
+</head>
+<body>
+<note-document data-title="Cybersecurity Notes — Full Coverage Fixture" data-version="1">
+
+  <!-- ═══════════════ PAGE 1 — Cryptography ═══════════════ -->
+  <note-page data-page="1" data-width="900" data-height="1270" data-background="#fdfbf3">
+
+    <note-title data-align="center">🔐 Cryptography Essentials</note-title>
+    <note-paragraph data-align="center">Full coverage fixture — tables, definitions, code, quotes, callouts &amp; rich text.</note-paragraph>
+
+    <note-question number="22" class="q-card">
+      <note-heading level="2">Symmetric vs <span class="hl">Asymmetric</span> Encryption</note-heading>
+      <note-table data-caption="Symmetric vs Asymmetric Encryption">
+        <table>
+          <thead>
+            <tr><th>Feature</th><th>Symmetric</th><th>Asymmetric</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Keys</td><td>One shared secret key</td><td>Public + private key pair</td></tr>
+            <tr><td>Speed</td><td>Fast ⚡</td><td>Slower 🐢</td></tr>
+            <tr><td>Algorithms</td><td><code>AES</code>, <code>ChaCha20</code></td><td><code>RSA</code>, <code>ECC</code></td></tr>
+            <tr><td>Typical use</td><td>Bulk data encryption</td><td>Key exchange, signatures</td></tr>
+          </tbody>
+        </table>
+      </note-table>
+      <note-callout type="info" title="How TLS uses both">Asymmetric crypto exchanges the session key; symmetric crypto encrypts the actual traffic — safe key distribution plus speed.</note-callout>
+    </note-question>
+
+    <note-definition term="Perfect Forward Secrecy">Every session negotiates fresh keys, so stealing one private key <u>cannot</u> decrypt past recorded traffic.</note-definition>
+
+    <note-quote data-cite="Defense in depth">Never rely on a single control — layer them so one failure isn’t fatal.</note-quote>
+
+    <note-question number="21" class="q-card">
+      <note-heading level="2">Encryption vs <span class="hl">Hashing</span> vs Encoding</note-heading>
+      <note-list type="bullet">
+        <note-item><span class="kw">Encryption</span> — reversible, needs a <strong>key</strong></note-item>
+        <note-item><span class="kw">Hashing</span> — one-way, e.g. <code>bcrypt</code> for passwords</note-item>
+        <note-item><span class="kw">Encoding</span> — <em>not</em> a security control, e.g. Base64</note-item>
+      </note-list>
+      <note-paragraph>Rule of thumb: <mark>encrypted → reversible with the key</mark>, and <s>hashed → reversible somehow</s> <strong>hashed → irreversible</strong>.</note-paragraph>
+    </note-question>
+
+  </note-page>
+
+  <!-- ═══════════════ PAGE 2 — Attacks & Defense ═══════════════ -->
+  <note-page data-page="2" data-width="900" data-height="1270" data-background="#f0f9ff">
+
+    <!-- absolutely positioned badge (tests data-x / data-y / data-w / data-z) -->
+    <note-callout type="warning" data-x="620" data-y="36" data-w="230" data-z="10" title="Don’t forget">Hybrid = asymmetric for the key, symmetric for the data.</note-callout>
+
+    <note-question number="3" class="q-card">
+      <note-heading level="2">A user account looks <span class="hl">compromised</span> — what now?</note-heading>
+      <note-list type="numbered" start="1">
+        <note-item><span class="kw">Identify</span> — spot anomalous logins and actions</note-item>
+        <note-item><span class="kw">Contain</span> — revoke sessions, reset credentials</note-item>
+        <note-item><span class="kw">Eradicate</span> — remove persistence, close the hole</note-item>
+        <note-item><span class="kw">Recover</span> — restore clean state</note-item>
+        <note-item><span class="kw">Lessons learned</span> — document everything</note-item>
+      </note-list>
+    </note-question>
+
+    <note-question number="47" class="q-card">
+      <note-heading level="2">What is <span class="hl">AAA</span>?</note-heading>
+      <note-paragraph>Authentication proves <em>who you are</em>, authorization decides <em>what you may do</em>, accounting records <em>what you did</em>.</note-paragraph>
+      <note-diagram type="svg" data-width="620" data-height="120" data-title="AAA — Authentication, Authorization, Accounting">
+        <svg viewBox="0 0 660 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="AAA flow: user is authenticated, then authorized, then actions are accounted">
+          <defs>
+            <marker id="aaaArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#0e7490"></path>
+            </marker>
+            <linearGradient id="aaaGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#e0f2fe"></stop>
+              <stop offset="1" stop-color="#bae6fd"></stop>
+            </linearGradient>
+          </defs>
+          <rect x="8" y="34" width="112" height="52" rx="12" fill="url(#aaaGrad)" stroke="#0e7490" stroke-width="2"></rect>
+          <text x="64" y="66" text-anchor="middle" font-family="Inter, sans-serif" font-size="15" fill="#0f172a">User</text>
+          <line x1="122" y1="60" x2="160" y2="60" stroke="#0e7490" stroke-width="2" marker-end="url(#aaaArrow)"></line>
+          <rect x="164" y="34" width="140" height="52" rx="12" fill="#fef9c3" stroke="#ca8a04" stroke-width="2"></rect>
+          <text x="234" y="58" text-anchor="middle" font-family="Inter, sans-serif" font-size="13" fill="#0f172a">Authentication</text>
+          <text x="234" y="76" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#57534e">“Who are you?”</text>
+          <line x1="306" y1="60" x2="344" y2="60" stroke="#0e7490" stroke-width="2" marker-end="url(#aaaArrow)"></line>
+          <rect x="348" y="34" width="140" height="52" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"></rect>
+          <text x="418" y="58" text-anchor="middle" font-family="Inter, sans-serif" font-size="13" fill="#0f172a">Authorization</text>
+          <text x="418" y="76" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#57534e">“What can you do?”</text>
+          <line x1="490" y1="60" x2="528" y2="60" stroke="#0e7490" stroke-width="2" marker-end="url(#aaaArrow)"></line>
+          <rect x="532" y="34" width="120" height="52" rx="12" fill="#fee2e2" stroke="#dc2626" stroke-width="2"></rect>
+          <text x="592" y="58" text-anchor="middle" font-family="Inter, sans-serif" font-size="13" fill="#0f172a">Accounting</text>
+          <text x="592" y="76" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#57534e">“What did you do?”</text>
+        </svg>
+      </note-diagram>
+    </note-question>
+
+    <note-question number="49" class="q-card">
+      <note-heading level="2">How does a <span class="hl">VPN</span> work?</note-heading>
+      <note-diagram type="excalidraw" data-width="520" data-title="Client → encrypted tunnel → Server">
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "noteforge-fixture",
+  "elements": [
+    {
+      "id": "rect-client",
+      "type": "rectangle",
+      "x": 60, "y": 80, "width": 150, "height": 70, "angle": 0,
+      "strokeColor": "#1e88e5", "backgroundColor": "#e3f2fd", "fillStyle": "solid",
+      "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100,
+      "groupIds": [], "frameId": null, "roundness": { "type": 3 },
+      "seed": 101, "version": 1, "versionNonce": 101, "isDeleted": false,
+      "boundElements": null, "updated": 1, "link": null, "locked": false
+    },
+    {
+      "id": "rect-server",
+      "type": "rectangle",
+      "x": 330, "y": 80, "width": 150, "height": 70, "angle": 0,
+      "strokeColor": "#43a047", "backgroundColor": "#e8f5e9", "fillStyle": "solid",
+      "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100,
+      "groupIds": [], "frameId": null, "roundness": { "type": 3 },
+      "seed": 102, "version": 1, "versionNonce": 102, "isDeleted": false,
+      "boundElements": null, "updated": 1, "link": null, "locked": false
+    },
+    {
+      "id": "arrow-tunnel",
+      "type": "arrow",
+      "x": 215, "y": 115, "width": 110, "height": 0, "angle": 0,
+      "strokeColor": "#e03131", "backgroundColor": "transparent", "fillStyle": "hachure",
+      "strokeWidth": 2, "strokeStyle": "solid", "roughness": 1, "opacity": 100,
+      "groupIds": [], "frameId": null, "roundness": { "type": 2 },
+      "seed": 103, "version": 1, "versionNonce": 103, "isDeleted": false,
+      "boundElements": null, "updated": 1, "link": null, "locked": false,
+      "points": [ [0, 0], [110, 0] ],
+      "lastCommittedPoint": null, "startBinding": null, "endBinding": null,
+      "startArrowhead": null, "endArrowhead": "arrow"
+    }
+  ],
+  "appState": { "viewBackgroundColor": "#ffffff", "gridSize": null },
+  "files": {}
+}
+      </note-diagram>
+    </note-question>
+
+    <note-heading level="3">TLS 1.3 handshake (simplified)</note-heading>
+    <note-diagram type="mermaid" data-width="600">
+flowchart LR
+  B["Browser"] --&gt;|"ClientHello"| S["Server"]
+  S --&gt;|"Certificate"| B
+  B --&gt;|"Key Exchange"| S
+  S -.->|"Encrypted session"| B
+    </note-diagram>
+
+    <note-heading level="3">Phishing red flags checklist</note-heading>
+    <note-list type="check">
+      <note-item data-checked="true">Mismatched sender domain</note-item>
+      <note-item data-checked="true">Urgency &amp; threats (“act now!”)</note-item>
+      <note-item data-checked="false">Unexpected attachments</note-item>
+      <note-item data-checked="false">Look-alike URLs (paypa1.com)</note-item>
+    </note-list>
+
+    <note-question number="40" class="q-card">
+      <note-heading level="2">How do you prevent <span class="hl">SQL Injection</span>?</note-heading>
+      <note-code language="sql">
+-- ❌ Vulnerable: user input concatenated into SQL
+SELECT * FROM users WHERE email = '&lt;user-input&gt;';
+
+-- ✅ Safe: parameterized query
+SELECT * FROM users WHERE email = $1;
+      </note-code>
+    </note-question>
+
+    <note-image
+      src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+      alt="Red 1×1 pixel placeholder"
+      width="48" height="48"
+      data-caption="Icon placeholder (1×1 PNG)">
+    </note-image>
+
+    <note-divider style="dashed"></note-divider>
+    <note-spacer height="24"></note-spacer>
+
+    <note-paragraph>Also see <a href="https://owasp.org/www-community/attacks/xss/">OWASP on XSS</a> — links open in a new tab.</note-paragraph>
+
+  </note-page>
+
+</note-document>
+</body>
+</html>

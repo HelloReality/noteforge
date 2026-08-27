@@ -1,0 +1,36 @@
+// NoteForge — Prisma schema (§7)
+// SQLite datasource. Document ↔ Version is one-to-many with a nullable
+// "latest version" pointer kept on the Document for O(1) public reads.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Document {
+  id              String    @id @default(cuid())
+  title           String
+  slug            String   @unique
+  status          String   @default("draft") // draft | review | published
+  latestVersionId String? @unique
+  latestVersion   Version? @relation("LatestVersion", fields: [latestVersionId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  versions        Version[] @relation("DocumentVersions")
+}
+
+model Version {
+  id           String   @id @default(cuid())
+  documentId   String
+  document     Document @relation("DocumentVersions", fields: [documentId], references: [id], onDelete: Cascade)
+  number       Int
+  modelJson    String   // JSON.stringify(NoteDocument)
+  warningsJson String   // JSON.stringify(Warning[])
+  note         String?
+  createdAt    DateTime @default(now())
+  isLatestFor  Document? @relation("LatestVersion")
+}

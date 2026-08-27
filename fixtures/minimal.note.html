@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="note-format" content="visual-notes/1">
+<title>Cybersecurity Notes — Sample</title>
+<style>
+  .note-page { font-family: 'Caveat', 'Comic Sans MS', cursive; color: #1f2933; padding: 48px; box-sizing: border-box; }
+  .q-card { border: 2px solid #f59e0b; border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; background: #fffdf5; }
+  .hl { background: #fef08a; border-radius: 4px; padding: 0 4px; }
+  .kw { color: #0e7490; font-weight: 700; }
+</style>
+</head>
+<body>
+<note-document data-title="Cybersecurity Notes — Sample" data-version="1">
+  <note-page data-page="1" data-width="900" data-height="1270" data-background="#fdf6e3">
+
+    <note-title data-align="center">🔐 Top Cybersecurity Interview Questions</note-title>
+
+    <note-question number="37" class="q-card">
+      <note-heading level="2">What is the <span class="hl">CIA Triad</span>?</note-heading>
+      <note-list type="bullet">
+        <note-item><span class="kw">Confidentiality</span> — only authorized parties can read data</note-item>
+        <note-item><span class="kw">Integrity</span> — data is not tampered with</note-item>
+        <note-item><span class="kw">Availability</span> — systems are up when needed</note-item>
+      </note-list>
+      <note-callout type="tip" title="Exam tip">Privacy → <span class="kw">Confidentiality</span>. Tampering → <span class="kw">Integrity</span>. Downtime → <span class="kw">Availability</span>.</note-callout>
+    </note-question>
+
+    <note-question number="2" class="q-card">
+      <note-heading level="2">How does a <span class="hl">MITM attack</span> work?</note-heading>
+      <note-paragraph>The attacker secretly <em>relays</em> traffic between victim and server — both sides believe they are talking directly.</note-paragraph>
+      <note-diagram type="mermaid" data-width="620" data-title="MITM attack flow">
+flowchart LR
+  A["Victim"] --&gt;|"intercepted"| M["Attacker"]
+  M --&gt;|"relays"| S["Server"]
+      </note-diagram>
+    </note-question>
+
+  </note-page>
+</note-document>
+</body>
+</html>
