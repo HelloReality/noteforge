@@ -755,3 +755,68 @@ Priority recommendations for next phase:
 4. Add a batch operations mode (select multiple docs, bulk delete/publish/export).
 5. Add a document templates gallery (pre-built .note.html starters).
 6. Scaffold the formal vitest test suites (security.spec.ts, parse.fixtures.spec.ts, roundtrip.spec.ts) per Appendix A.4.
+
+---
+Task ID: 12 (webDevReview cron — round 9)
+Agent: main (orchestrator)
+Task: QA assessment + document templates gallery
+
+Work Log:
+- Read full worklog to assess project status. Phase-1 + rounds 1-8 (lifecycle/search/shortcuts/syntax highlighting/settings/DnD/duplicate/reading progress/print/TOC/recently edited/full-text search/Markdown export/preview-mode toggle/share dialog/context menu/search keyboard nav/fullscreen preview/version comparison/dark mode/recently viewed/block filter/favorites/library stats/dark hero) all complete and verified.
+- Performed QA: all 8 routes returned 200, zero console errors, zero page errors. Lint clean. App stable.
+- Selected work focus from round-8 recommendations: document templates gallery (#5).
+
+New features built this round:
+
+1. Document templates gallery (/templates):
+   - Created src/lib/note-format/templates.ts with 5 pre-built templates:
+     - blank: Single empty page with a title — the minimal starting point.
+     - study-guide: Q&A format with numbered questions, callouts for tips, and a definitions section.
+     - meeting-notes: Agenda, attendees, action items with check-lists, and a decisions callout.
+     - quick-reference: Cheat-sheet layout with a comparison table, code snippets, and a definition list.
+     - tutorial: Step-by-step tutorial with numbered steps, a code example, and a summary callout.
+   - Each template is a complete .note.html string with its own styling (fonts, colors, callout styles).
+   - Templates are categorized: study, meeting, reference, tutorial.
+   - Created src/app/templates/page.tsx (client component):
+     - Grid of template cards with icon, name, description, category badge, and "Use template" button.
+     - Search input to filter templates by name/description.
+     - Category filter chips (All, Study, Meeting, Reference, Tutorial) with active state (amber).
+     - Clicking "Use template" POSTs the template HTML to /api/import (as FormData), then redirects to the review page.
+     - Loading state on the button ("Importing…") with spinner.
+     - Toast notification on success.
+     - Empty state when no templates match filters.
+     - Dark mode support throughout.
+   - Added "Templates" nav link to the AppHeader (between Import and Search, with LayoutTemplate icon).
+   - Added "Templates" button to the home hero (between "Import a note" and "Search content").
+   - Added a "Browse templates →" callout at the bottom of the import page (for users who don't have a .note.html file handy).
+   - VLM confirmed: "Document templates heading, 5 template cards with icons/names/descriptions/category labels/Use template buttons, category filter chips (All/Study/Meeting/Reference/Tutorial)."
+   - Verified: template import works — created a new "Untitled Note" document from the blank template (confirmed via doc count going from 4→5, then cleaned up).
+
+Styling polish:
+- Template cards with hover lift effect (-translate-y-0.5 + shadow-md).
+- Category chips with amber active state.
+- Dark mode support on all template cards, chips, search input.
+- "Browse templates" callout on import page with dashed amber border.
+- Home hero Templates button with dark mode variants.
+
+Stage Summary (verification results):
+- `bun run lint`: 0 errors, 0 warnings.
+- `bunx tsc --noEmit`: 0 errors in any new/modified file.
+- All 9 routes return 200 (including new /templates).
+- agent-browser QA: templates page renders 5 template cards + search + category chips; clicking "Use template" creates a new document via the import API.
+- VLM screenshot analysis: "Document templates heading, 5 template cards with icons (document/books/calendar), names, descriptions, category labels (REFERENCE/STUDY), orange 'Use template' buttons, category filter chips."
+- Template import verified: doc count went from 4 to 5 after importing the blank template, then cleaned up.
+
+Unresolved issues / risks:
+- The sandbox continues to kill background processes between Bash tool calls — required multiple restarts.
+- The templates are client-side only (no server-side template management); a future enhancement could allow users to save their own templates.
+- Direct-canvas block selection in edit mode is still a Phase-2 enhancement.
+- Formal vitest/playwright test suites (A.4) are still not scaffolded.
+
+Priority recommendations for next phase:
+1. Add inline rich-text editing (click a heading/paragraph in the preview to edit it directly).
+2. Add a character-level content diff in the version comparison.
+3. Add batch operations mode (select multiple docs, bulk delete/publish/export).
+4. Add a "save as template" feature (let users save their own documents as reusable templates).
+5. Add tags/collections for organizing documents beyond favorites.
+6. Scaffold the formal vitest test suites (security.spec.ts, parse.fixtures.spec.ts, roundtrip.spec.ts) per Appendix A.4.

@@ -3,6 +3,7 @@
 
 import { useCallback, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Upload, FileUp, Sparkles, ShieldCheck, Loader2, FileCode2, ClipboardPaste } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -141,6 +142,15 @@ export default function ImportPage() {
         <Feature icon={<FileUp className="h-4 w-4" />} title="Versioned">
           Each import creates version 1; later edits append new versions — never destructive.
         </Feature>
+      </div>
+
+      <div className="mt-6 rounded-xl border border-dashed border-amber-300 bg-amber-50/50 p-4 text-center dark:border-amber-800 dark:bg-amber-950/20">
+        <p className="text-sm text-stone-600 dark:text-stone-300">
+          Don&apos;t have a <code className="rounded bg-stone-200 px-1 text-xs dark:bg-stone-700">.note.html</code> file handy?{' '}
+          <Link href="/templates" className="font-semibold text-amber-600 hover:text-amber-700 hover:underline">
+            Browse templates →
+          </Link>
+        </p>
       </div>
     </div>
   )

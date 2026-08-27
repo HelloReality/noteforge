@@ -6,7 +6,7 @@ import { listDocuments, getPublishedSlugs, getDocumentStats, listRecentDocuments
 import { AppEmptyState } from '@/components/app/AppEmptyState'
 import { LibraryClient, type LibraryDoc } from '@/components/app/LibraryClient'
 import { RecentlyViewed } from '@/components/app/RecentlyViewed'
-import { Upload, ShieldCheck, FileText, Globe, Layers, Search, Clock, ArrowRight, Hash, Spline, Table as TableIcon, Type, HelpCircle } from 'lucide-react'
+import { Upload, ShieldCheck, FileText, Globe, Layers, Search, Clock, ArrowRight, Hash, Spline, Table as TableIcon, Type, HelpCircle, LayoutTemplate } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -51,16 +51,22 @@ export default async function LibraryPage() {
               >
                 <Upload className="h-4 w-4" /> Import a note
               </Link>
+              <Link
+                href="/templates"
+                className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 shadow-sm transition hover:border-amber-300 hover:bg-amber-50 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-200 dark:hover:border-amber-700"
+              >
+                <LayoutTemplate className="h-4 w-4" /> Templates
+              </Link>
               {docs.length > 0 && (
                 <Link
                   href="/search"
-                  className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 shadow-sm transition hover:border-amber-300 hover:bg-amber-50"
+                  className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 shadow-sm transition hover:border-amber-300 hover:bg-amber-50 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-200 dark:hover:border-amber-700"
                 >
                   <Search className="h-4 w-4" /> Search content
                 </Link>
               )}
               {docs.length > 0 && (
-                <div className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-600">
+                <div className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-600 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-300">
                   <FileText className="h-4 w-4" /> {docs.length} document{docs.length === 1 ? '' : 's'} · {totalVersions} versions
                 </div>
               )}

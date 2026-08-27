@@ -3,7 +3,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { NotebookPen, Library, Upload, Search, Github } from 'lucide-react'
+import { NotebookPen, Library, Upload, Search, LayoutTemplate, Github } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ThemeToggle } from './ThemeToggle'
 
@@ -22,6 +22,7 @@ export function AppHeader() {
         <nav className="ml-2 flex items-center gap-1 text-sm">
           <NavLink href="/" active={pathname === '/'} icon={<Library className="h-4 w-4" />}>Library</NavLink>
           <NavLink href="/import" active={pathname?.startsWith('/import') ?? false} icon={<Upload className="h-4 w-4" />}>Import</NavLink>
+          <NavLink href="/templates" active={pathname?.startsWith('/templates') ?? false} icon={<LayoutTemplate className="h-4 w-4" />}>Templates</NavLink>
           <NavLink href="/search" active={pathname?.startsWith('/search') ?? false} icon={<Search className="h-4 w-4" />}>Search</NavLink>
         </nav>
         <div className="ml-auto flex items-center gap-2 text-xs text-stone-400 dark:text-stone-500">
