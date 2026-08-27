@@ -1,7 +1,16 @@
 // NoteForge — editor outline (§12): page + block tree, selection, reorder, add.
+// Now with @dnd-kit drag-and-drop reordering + duplicate-block action.
 'use client'
 
 import { useState } from 'react'
+import {
+  DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { useEditorStore, emptyBlock, type BlockPath } from '@/lib/store/editor-store'
 import type { Block } from '@/lib/note-format/types'
 import { cn } from '@/lib/utils'
@@ -9,7 +18,7 @@ import { Button } from '@/components/ui/button'
 import {
   Plus, Trash2, ChevronUp, ChevronDown, Heading1, Pilcrow, List, HelpCircle,
   MessageSquareQuote, StickyNote, Quote, Minus, Square, Code2, Table, Image as ImageIcon,
-  Spline, Type, Layers, FileText,
+  Spline, Type, Layers, GripVertical, Copy,
 } from 'lucide-react'
 
 const BLOCK_ICON: Record<Block['type'], React.ReactNode> = {
@@ -49,7 +58,14 @@ export function Outline({ currentPage }: { currentPage: number }) {
   const deleteBlock = useEditorStore((s) => s.deleteBlock)
   const moveBlock = useEditorStore((s) => s.moveBlock)
   const addBlock = useEditorStore((s) => s.addBlock)
+  const reorderBlock = useEditorStore((s) => s.reorderBlock)
+  const duplicateBlock = useEditorStore((s) => s.duplicateBlock)
   const [adding, setAdding] = useState(false)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
 
   if (!doc) return null
   const page = doc.pages[currentPage]
@@ -58,6 +74,16 @@ export function Outline({ currentPage }: { currentPage: number }) {
   const pathEq = (a: BlockPath | null, b: BlockPath): boolean => {
     if (!a) return false
     return a.length === b.length && a.every((v, i) => v === b[i])
+  }
+
+  const blockIds = page.blocks.map((_, i) => `block-${i}`)
+
+  const handleDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e
+    if (!over || active.id === over.id) return
+    const fromIndex = Number(String(active.id).replace('block-', ''))
+    const toIndex = Number(String(over.id).replace('block-', ''))
+    reorderBlock([currentPage, fromIndex], toIndex)
   }
 
   return (
@@ -87,19 +113,29 @@ export function Outline({ currentPage }: { currentPage: number }) {
       )}
 
       <div className="flex-1 overflow-auto px-2 pb-2">
-        {page.blocks.map((b, i) => (
-          <BlockRow
-            key={i}
-            block={b}
-            path={[currentPage, i]}
-            depth={0}
-            selectedPath={selectedPath}
-            pathEq={pathEq}
-            onSelect={select}
-            onDelete={deleteBlock}
-            onMove={moveBlock}
-          />
-        ))}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={blockIds} strategy={verticalListSortingStrategy}>
+            {page.blocks.map((b, i) => (
+              <SortableBlockRow
+                key={`block-${i}`}
+                id={`block-${i}`}
+                block={b}
+                path={[currentPage, i]}
+                depth={0}
+                selectedPath={selectedPath}
+                pathEq={pathEq}
+                onSelect={select}
+                onDelete={deleteBlock}
+                onMove={moveBlock}
+                onDuplicate={duplicateBlock}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
       </div>
 
       <div className="border-t border-stone-200 p-2">
@@ -132,8 +168,48 @@ export function Outline({ currentPage }: { currentPage: number }) {
   )
 }
 
-function BlockRow({
-  block, path, depth, selectedPath, pathEq, onSelect, onDelete, onMove,
+function SortableBlockRow(props: {
+  id: string
+  block: Block
+  path: BlockPath
+  depth: number
+  selectedPath: BlockPath | null
+  pathEq: (a: BlockPath | null, b: BlockPath) => boolean
+  onSelect: (p: BlockPath | null) => void
+  onDelete: (p: BlockPath) => void
+  onMove: (p: BlockPath, dir: 'up' | 'down') => void
+  onDuplicate: (p: BlockPath) => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.id })
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 50 : 'auto',
+  }
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <BlockRowInner
+        {...props}
+        dragHandle={(
+          <button
+            {...attributes}
+            {...listeners}
+            className="cursor-grab text-stone-300 hover:text-stone-500 active:cursor-grabbing"
+            aria-label="Drag to reorder"
+          >
+            <GripVertical className="h-3.5 w-3.5" />
+          </button>
+        )}
+      />
+    </div>
+  )
+}
+
+function BlockRowInner({
+  block, path, depth, selectedPath, pathEq, onSelect, onDelete, onMove, onDuplicate, dragHandle,
 }: {
   block: Block
   path: BlockPath
@@ -143,6 +219,8 @@ function BlockRow({
   onSelect: (p: BlockPath | null) => void
   onDelete: (p: BlockPath) => void
   onMove: (p: BlockPath, dir: 'up' | 'down') => void
+  onDuplicate: (p: BlockPath) => void
+  dragHandle: React.ReactNode
 }) {
   const selected = pathEq(selectedPath, path)
   const snippet = blockSnippet(block)
@@ -158,16 +236,18 @@ function BlockRow({
         )}
         style={{ paddingLeft: 8 + depth * 12 }}
       >
+        <span className="shrink-0 opacity-30 transition group-hover:opacity-100">{dragHandle}</span>
         <span className="shrink-0 text-stone-400">{BLOCK_ICON[block.type]}</span>
         <span className="flex-1 truncate text-xs">{snippet}</span>
         <span className="hidden shrink-0 gap-0.5 group-hover:flex">
+          <IconBtn title="Duplicate" onClick={(e) => { e.stopPropagation(); onDuplicate(path) }}><Copy className="h-3 w-3" /></IconBtn>
           <IconBtn title="Up" onClick={(e) => { e.stopPropagation(); onMove(path, 'up') }}><ChevronUp className="h-3 w-3" /></IconBtn>
           <IconBtn title="Down" onClick={(e) => { e.stopPropagation(); onMove(path, 'down') }}><ChevronDown className="h-3 w-3" /></IconBtn>
           <IconBtn title="Delete" onClick={(e) => { e.stopPropagation(); onDelete(path) }}><Trash2 className="h-3 w-3" /></IconBtn>
         </span>
       </div>
       {hasChildren && (block as any).children.map((c: Block, ci: number) => (
-        <BlockRow
+        <BlockRowInner
           key={ci}
           block={c}
           path={[path[0], path[1], ci]}
@@ -177,6 +257,8 @@ function BlockRow({
           onSelect={onSelect}
           onDelete={onDelete}
           onMove={onMove}
+          onDuplicate={onDuplicate}
+          dragHandle={<span className="hidden"><GripVertical className="h-3.5 w-3.5" /></span>}
         />
       ))}
     </div>
@@ -215,6 +297,3 @@ function blockSnippet(block: Block): string {
     case 'diagram': return `${block.diagramType} diagram`
   }
 }
-
-// keep FileText referenced (used in icons map fallback)
-void FileText

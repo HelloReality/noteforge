@@ -20,7 +20,7 @@ export interface CodeBlockProps {
 }
 
 export function CodeBlock({ block, mode: _mode }: CodeBlockProps): ReactElement {
-  const className = classes('note-code', block.classes)
+  const className = classes('note-code')
   return (
     <pre className={className} data-language={block.language ?? undefined}>
       {block.language ? (

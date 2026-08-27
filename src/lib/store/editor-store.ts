@@ -27,6 +27,8 @@ interface EditorState {
   addBlock: (page: number, block: Block, at?: BlockPath | 'end') => void
   deleteBlock: (path: BlockPath) => void
   moveBlock: (path: BlockPath, dir: 'up' | 'down') => void
+  reorderBlock: (from: BlockPath, toIndex: number) => void
+  duplicateBlock: (path: BlockPath) => void
   replaceBlock: (path: BlockPath, block: Block) => void
   undo: () => void
   redo: () => void
@@ -150,6 +152,36 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       ;[arr[c], arr[target]] = [arr[target], arr[c]]
       return withHistory(s, next)
     }
+  }),
+
+  reorderBlock: (from, toIndex) => set((s) => {
+    if (!s.doc) return {}
+    const [p, b, c] = from
+    if (c !== undefined) return {} // only top-level blocks reorder via DnD for now
+    const next = clone(s.doc)
+    const arr = next.pages[p].blocks
+    if (b === toIndex || toIndex < 0 || toIndex >= arr.length) return {}
+    const [moved] = arr.splice(b, 1)
+    arr.splice(toIndex, 0, moved)
+    return withHistory(s, next)
+  }),
+
+  duplicateBlock: (path) => set((s) => {
+    if (!s.doc) return {}
+    const [p, b, c] = path
+    const next = clone(s.doc)
+    if (c === undefined) {
+      const arr = next.pages[p].blocks
+      const dup = clone(arr[b])
+      arr.splice(b + 1, 0, dup)
+    } else {
+      const parent = next.pages[p].blocks[b]
+      if (parent.type === 'question') {
+        const dup = clone(parent.children[c])
+        parent.children.splice(c + 1, 0, dup)
+      }
+    }
+    return withHistory(s, next)
   }),
 
   undo: () => set((s) => {

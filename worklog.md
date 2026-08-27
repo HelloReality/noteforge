@@ -297,3 +297,75 @@ Priority recommendations for next phase:
 4. Add a print/PDF export option for the public viewer.
 5. Add a reading-progress indicator on the public viewer.
 6. Scaffold the formal vitest test suites (security.spec.ts, parse.fixtures.spec.ts, roundtrip.spec.ts) per Appendix A.4.
+
+---
+Task ID: 6 (webDevReview cron — round 3)
+Agent: main (orchestrator)
+Task: QA assessment + drag-and-drop block reordering + duplicate block + reading progress + print/PDF
+
+Work Log:
+- Read full worklog to assess project status. Phase-1 + round 1 (lifecycle/search) + round 2 (shortcuts/syntax highlighting/settings) all complete and verified.
+- Performed QA: all 6 routes returned 200, zero console errors, zero page errors. Lint clean. App stable.
+- Selected work focus from round-2 recommendations: drag-and-drop reordering (#1), duplicate block (#2), reading progress (#5), print/PDF (#4).
+
+New features built this round:
+
+1. Drag-and-drop block reordering in the editor outline (@dnd-kit):
+   - Added `reorderBlock(from, toIndex)` and `duplicateBlock(path)` to the editor store (src/lib/store/editor-store.ts).
+   - Rewrote src/components/editor/Outline.tsx to use @dnd-kit/core + @dnd-kit/sortable:
+     - DndContext with PointerSensor (5px activation distance) + KeyboardSensor (accessible).
+     - SortableContext with verticalListSortingStrategy.
+     - Each block row wrapped in a useSortable hook with a GripVertical drag handle.
+     - Drag handle is faintly visible (opacity-30) and brightens on hover (opacity-100) — VLM confirmed "six dots" grip icons visible.
+     - On drag end, calls reorderBlock([page, from], to).
+   - Nested question children still use the existing up/down arrows (DnD is top-level only for now).
+
+2. Duplicate block action:
+   - Added "Duplicate" icon button (Copy icon) to each block row's hover actions, next to Up/Down/Delete.
+   - Calls duplicateBlock(path) which clones the block (deep via structuredClone) and inserts it right after the original.
+   - Works for both top-level blocks and nested question children.
+   - Verified: 12 duplicate buttons present in the full-coverage fixture editor (6 top-level + 6 nested).
+
+3. Reading progress indicator on the public viewer:
+   - Created src/components/app/ReadingProgress.tsx (client component).
+   - Fixed thin bar (h-1) at top-14 (below the app header), z-30, with a subtle stone-200/40 track.
+   - Calculates progress as scroll position relative to the #noteforge-note-content container.
+   - Gradient fill (amber-400 → orange-500) with smooth width transition.
+   - Hidden in print mode (no-print class).
+   - VLM confirmed: bar is partially filled after scrolling down.
+
+4. Print/PDF export on the public viewer:
+   - Created src/components/app/PublicViewerActions.tsx (client component) with Print, Copy link, and Library back button.
+   - Print button calls window.print().
+   - Copy link uses navigator.clipboard.writeText with prompt fallback.
+   - Added print styles to src/app/globals.css (@media print): hides .no-print elements, removes shadows/borders, sets page-break-after: always on .note-page.
+   - Updated src/app/notes/[slug]/page.tsx to include ReadingProgress + PublicViewerActions, added id="noteforge-note-content" for the progress calculation, marked header/footer as no-print.
+   - VLM confirmed: Print/PDF and Copy link buttons clearly visible.
+
+Editor store additions (src/lib/store/editor-store.ts):
+- reorderBlock(from: BlockPath, toIndex: number) — splices the block from its current position and inserts at the target index (top-level only; immutable with history).
+- duplicateBlock(path: BlockPath) — deep-clones the block and inserts immediately after the original (works for both top-level and nested question children).
+
+Stage Summary (verification results):
+- `bun run lint`: 0 errors, 0 warnings.
+- `bunx tsc --noEmit`: 0 errors in any new/modified file.
+- agent-browser QA:
+  - Editor outline: 6 drag handles + 12 duplicate buttons present (confirmed via eval).
+  - Public viewer: Print button + Copy link button present (confirmed via eval).
+  - Reading progress bar: present as a fixed element at top-14 (confirmed), fills on scroll (VLM confirmed "partially filled after scrolling").
+  - All 6 routes return 200, zero console errors.
+- VLM screenshot analysis: drag handles "six dots arranged in 2x3 grid" visible; Print/PDF + Copy link buttons "clearly visible"; reading progress "partially filled after scrolling".
+
+Unresolved issues / risks:
+- The sandbox continues to kill background processes (dev server) between Bash tool calls — required multiple restarts.
+- Drag-and-drop is top-level only; nested question children still use up/down arrows (a reasonable scope limit).
+- Direct-canvas block selection in edit mode is still a Phase-2 enhancement.
+- Formal vitest/playwright test suites (A.4) are still not scaffolded.
+
+Priority recommendations for next phase:
+1. Add full-text search across all document content (not just titles) — a dedicated /search page.
+2. Add a table-of-contents sidebar on the public viewer (auto-generated from headings).
+3. Add block-level context menu (right-click) in the editor for quick actions.
+4. Add a "recently edited" section on the library dashboard.
+5. Add export to Markdown (in addition to .note.html).
+6. Scaffold the formal vitest test suites (security.spec.ts, parse.fixtures.spec.ts, roundtrip.spec.ts) per Appendix A.4.

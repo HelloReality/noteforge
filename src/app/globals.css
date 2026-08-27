@@ -146,3 +146,20 @@
   overflow-x: auto;
   padding: 0 16px;
 }
+
+/* NoteForge — print styles for the public viewer (Print / PDF export).
+   Hides non-essential chrome, removes shadows, ensures pages break cleanly. */
+@media print {
+  .no-print { display: none !important; }
+  body { background: white !important; }
+  .noteforge-doc .note-page {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    page-break-after: always;
+  }
+  .noteforge-doc .noteforge-pages {
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+}

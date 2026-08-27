@@ -1,8 +1,11 @@
 // NoteForge — public viewer (§15.2): SSR, semantic rendering, clean URLs.
+// Includes reading-progress indicator, print/PDF export, copy-link action.
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { getPublishedBySlug } from '@/lib/server/storage'
 import { NoteRenderer } from '@/components/renderer'
+import { ReadingProgress } from '@/components/app/ReadingProgress'
+import { PublicViewerActions } from '@/components/app/PublicViewerActions'
 import { ShieldCheck, FileWarning, Globe } from 'lucide-react'
 import Link from 'next/link'
 
@@ -28,7 +31,8 @@ export default async function PublicNotePage({ params }: { params: Promise<{ slu
 
   return (
     <div className="min-h-screen flex flex-col">
-      <div className="border-b border-stone-200 bg-stone-50/80 backdrop-blur">
+      <ReadingProgress />
+      <div className="no-print border-b border-stone-200 bg-stone-50/80 backdrop-blur">
         <div className="mx-auto flex max-w-5xl flex-col gap-2 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-xl font-bold tracking-tight text-stone-900">{data.document.title}</h1>
@@ -37,26 +41,29 @@ export default async function PublicNotePage({ params }: { params: Promise<{ slu
               Published · last updated {updated.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
             </p>
           </div>
-          <div className="flex items-center gap-3 text-xs">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 font-medium text-emerald-800">
-              <ShieldCheck className="h-3.5 w-3.5" /> Sanitized &amp; safe
-            </span>
-            {data.warnings.length > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-800">
-                <FileWarning className="h-3.5 w-3.5" /> {data.warnings.length} warnings on import
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 font-medium text-emerald-800">
+                <ShieldCheck className="h-3.5 w-3.5" /> Sanitized &amp; safe
               </span>
-            )}
+              {data.warnings.length > 0 && (
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-800">
+                  <FileWarning className="h-3.5 w-3.5" /> {data.warnings.length} warnings on import
+                </span>
+              )}
+            </div>
+            <PublicViewerActions slug={slug} />
           </div>
         </div>
       </div>
 
-      <div className="flex-1 bg-stone-100">
+      <div id="noteforge-note-content" className="flex-1 bg-stone-100">
         <div className="mx-auto max-w-5xl px-4 py-8">
           <NoteRenderer doc={data.model} mode="public" />
         </div>
       </div>
 
-      <div className="border-t border-stone-200 bg-stone-50">
+      <div className="no-print border-t border-stone-200 bg-stone-50">
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-2 px-4 py-6 text-xs text-stone-500 sm:flex-row">
           <p>
             Powered by{' '}
