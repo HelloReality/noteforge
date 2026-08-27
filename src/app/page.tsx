@@ -2,16 +2,17 @@
 // Server component. Hero + stats + search/filter/sort + document grid.
 
 import Link from 'next/link'
-import { listDocuments, getPublishedSlugs, getDocumentStats, type DocumentListRow } from '@/lib/server/storage'
+import { listDocuments, getPublishedSlugs, getDocumentStats, listRecentDocuments, type DocumentListRow } from '@/lib/server/storage'
 import { AppEmptyState } from '@/components/app/AppEmptyState'
 import { LibraryClient, type LibraryDoc } from '@/components/app/LibraryClient'
-import { Upload, ShieldCheck, FileText, Globe, Layers } from 'lucide-react'
+import { Upload, ShieldCheck, FileText, Globe, Layers, Search, Clock, ArrowRight } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
 export default async function LibraryPage() {
   const docs = await listDocuments()
   const publishedSlugs = await getPublishedSlugs()
+  const recentDocs = await listRecentDocuments(5)
 
   // batch-fetch stats for every document (fine for small libraries)
   const statsPromises = docs.map((d) => getDocumentStats(d.id).catch(() => null))
@@ -49,6 +50,14 @@ export default async function LibraryPage() {
                 <Upload className="h-4 w-4" /> Import a note
               </Link>
               {docs.length > 0 && (
+                <Link
+                  href="/search"
+                  className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 shadow-sm transition hover:border-amber-300 hover:bg-amber-50"
+                >
+                  <Search className="h-4 w-4" /> Search content
+                </Link>
+              )}
+              {docs.length > 0 && (
                 <div className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm text-stone-600">
                   <FileText className="h-4 w-4" /> {docs.length} document{docs.length === 1 ? '' : 's'} · {totalVersions} versions
                 </div>
@@ -73,6 +82,21 @@ export default async function LibraryPage() {
         <LibraryClient docs={libraryDocs} publishedSlugs={publishedSlugs} />
       )}
 
+      {/* Recently edited */}
+      {docs.length > 0 && (
+        <section className="mt-10">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-stone-500">
+              <Clock className="h-4 w-4" /> Recently edited
+            </h2>
+            <Link href="/search" className="text-xs font-medium text-amber-600 hover:text-amber-700 hover:underline">
+              Search all →
+            </Link>
+          </div>
+          <RecentDocuments docs={recentDocs} publishedSlugs={publishedSlugs} />
+        </section>
+      )}
+
       {/* Security callout */}
       <section className="mt-12 rounded-xl border border-stone-200 bg-white p-5">
         <div className="flex items-center gap-2 text-stone-800">
@@ -87,6 +111,54 @@ export default async function LibraryPage() {
       </section>
     </div>
   )
+}
+
+function RecentDocuments({ docs, publishedSlugs }: { docs: DocumentListRow[]; publishedSlugs: string[] }) {
+  const publishedSet = new Set(publishedSlugs)
+  return (
+    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      {docs.map((d) => {
+        const published = publishedSet.has(d.slug)
+        const updated = new Date(d.updatedAt)
+        return (
+          <Link
+            key={d.id}
+            href={`/documents/${d.id}/edit`}
+            className="group flex items-center gap-3 rounded-lg border border-stone-200 bg-white p-3 transition hover:border-amber-300 hover:bg-amber-50/40"
+          >
+            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
+              d.status === 'published' ? 'bg-emerald-100 text-emerald-700' :
+              d.status === 'review' ? 'bg-amber-100 text-amber-700' :
+              'bg-stone-100 text-stone-600'
+            }`}>
+              v{d.latestVersionNumber ?? 0}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-stone-800 group-hover:text-amber-700">{d.title}</p>
+              <p className="text-xs text-stone-400">{formatRelative(updated)}</p>
+            </div>
+            {published && (
+              <Globe className="h-3.5 w-3.5 shrink-0 text-emerald-500" aria-label="Published" />
+            )}
+            <ArrowRight className="h-3.5 w-3.5 shrink-0 text-stone-300 transition group-hover:text-amber-500" />
+          </Link>
+        )
+      })}
+    </div>
+  )
+}
+
+function formatRelative(date: Date): string {
+  const diffMs = Date.now() - date.getTime()
+  const sec = Math.floor(diffMs / 1000)
+  if (sec < 60) return 'just now'
+  const min = Math.floor(sec / 60)
+  if (min < 60) return `${min}m ago`
+  const hr = Math.floor(min / 60)
+  if (hr < 24) return `${hr}h ago`
+  const day = Math.floor(hr / 24)
+  if (day < 7) return `${day}d ago`
+  return date.toLocaleDateString()
 }
 
 function StatTile({ icon, value, label, tone }: {

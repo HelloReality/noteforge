@@ -369,3 +369,78 @@ Priority recommendations for next phase:
 4. Add a "recently edited" section on the library dashboard.
 5. Add export to Markdown (in addition to .note.html).
 6. Scaffold the formal vitest test suites (security.spec.ts, parse.fixtures.spec.ts, roundtrip.spec.ts) per Appendix A.4.
+
+---
+Task ID: 7 (webDevReview cron — round 4)
+Agent: main (orchestrator)
+Task: QA assessment + full-text search page + table-of-contents sidebar + recently edited section
+
+Work Log:
+- Read full worklog to assess project status. Phase-1 + rounds 1-3 (lifecycle/search/shortcuts/syntax highlighting/settings/DnD/duplicate/reading progress/print) all complete and verified.
+- Performed QA: all 6 routes returned 200, zero console errors, zero page errors. Lint clean. App stable.
+- Selected work focus from round-3 recommendations: full-text search (#1), table-of-contents (#2), recently edited (#4).
+
+New features built this round:
+
+1. Full-text search across all document content:
+   - Backend: Added `searchDocumentContent(query, limit)` to src/lib/server/storage.ts:
+     - Scans all documents' latest version model JSON.
+     - Extracts plain text from every block (html, text, term, title, caption, cite, alt, items, children recursively).
+     - Case-insensitive substring match.
+     - Returns SearchResultRow[] with id/title/slug/status/updatedAt + up to 5 hits per doc, each with page/blockIndex/blockType/snippet/highlighted.
+     - `makeSnippet` generates a ±60-char context window with `<mark>` around matches.
+   - Added `listRecentDocuments(limit)` for the dashboard section.
+   - API: Created GET /api/search?q=<query>&limit=<n> — returns { results, total, totalMatches, query }.
+   - Frontend: Created /search page (src/app/search/page.tsx):
+     - Debounced live search (300ms) with loading spinner.
+     - Highlights matches with <mark> (amber background).
+     - Shows document title, status badge, match count, per-hit block type icon + page/block location.
+     - Suggested search chips (CIA, encryption, XSS, SQL, AAA, VPN) for empty state.
+     - Updates URL with query param without full navigation.
+   - Verified: "CIA" → 2 results/2 matches; "SQL" → 1 result/1 match.
+   - VLM confirmed: "query 'cia' with highlighted 'CIA' matches in yellow, document title, snippets, page/block metadata."
+
+2. Table-of-contents sidebar on the public viewer:
+   - Created src/components/app/TableOfContents.tsx (client component):
+     - Auto-generates a TOC from .note-heading and .note-title elements in the rendered note.
+     - Sets IDs on headings for anchor navigation.
+     - Scroll spy: highlights the currently-visible heading (uses useSyncExternalStore for scroll-position re-render, avoiding set-state-in-effect lint rule).
+     - Sticky positioning (top-24), hidden on mobile (xl:block), max-height with overflow-y-auto.
+     - Click to smooth-scroll to the heading.
+     - Indentation by heading level (level 1 = title, level 2/3/4 = headings).
+   - Updated src/app/notes/[slug]/page.tsx: flex layout with note content (flex-1) + TOC sidebar (w-56).
+   - VLM confirmed: "TOC sidebar on the right with 'ON THIS PAGE' and list of headings; note content on left, TOC on right."
+   - Verified: 9 TOC items on the full-coverage fixture (which has 16 note-heading elements, but TOC requires ≥2 to render).
+
+3. Recently edited section on the library dashboard:
+   - Added `listRecentDocuments(limit)` to storage.ts — returns the N most recently updated DocumentListRows.
+   - Added a RecentDocuments component to src/app/page.tsx:
+     - Compact horizontal cards with version badge (color-coded by status), title, relative timestamp, published globe icon, arrow.
+     - Grid layout (sm:2, lg:3 columns).
+     - Links to the editor.
+   - Added "Search content" button to the hero (links to /search).
+   - VLM confirmed: "RECENTLY EDITED section below the document grid with version badges (v1, v3) and timestamps (just now, 33m ago, etc.)".
+
+4. Navigation: Added "Search" link to the AppHeader nav (between Import and the spec link).
+
+Stage Summary (verification results):
+- `bun run lint`: 0 errors, 0 warnings.
+- `bunx tsc --noEmit`: 0 errors in any new/modified file.
+- All 7 routes return 200 (including new /search).
+- Search API verified: "CIA" → 2 results, "SQL" → 1 result.
+- agent-browser QA: home page has Search content button + Recently edited section; search page shows live results with highlighted matches; public viewer TOC has 9 items with scroll spy.
+- VLM screenshot analysis: home "Search content button + RECENTLY EDITED section with version badges and timestamps"; search "query 'cia' with highlighted CIA matches in yellow"; public viewer "TOC sidebar on the right with ON THIS PAGE and list of headings".
+
+Unresolved issues / risks:
+- The sandbox continues to kill background processes between Bash tool calls — required multiple restarts.
+- The TOC only renders on xl+ screens (≥1280px) to avoid clutter on smaller viewports.
+- Direct-canvas block selection in edit mode is still a Phase-2 enhancement.
+- Formal vitest/playwright test suites (A.4) are still not scaffolded.
+
+Priority recommendations for next phase:
+1. Add block-level context menu (right-click) in the editor for quick actions (duplicate, delete, move up/down, wrap in question).
+2. Add export to Markdown (in addition to .note.html) — convert NoteDocument model to MD.
+3. Add a document preview mode toggle in the editor (preview vs. public rendering).
+4. Add keyboard navigation in the search results (arrow keys + enter).
+5. Add a "share" dialog with social share buttons on the public viewer.
+6. Scaffold the formal vitest test suites (security.spec.ts, parse.fixtures.spec.ts, roundtrip.spec.ts) per Appendix A.4.

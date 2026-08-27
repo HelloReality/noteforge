@@ -450,3 +450,136 @@ export async function getDocumentStats(id: string): Promise<DocumentStats | null
   for (const page of model.pages) for (const b of page.blocks) countBlock(b)
   return { pages: model.pages.length, blocks, words, diagrams, tables, questions }
 }
+
+// ── Full-text search across document content ────────────────────────────────
+
+export interface SearchResultHit {
+  page: number
+  blockIndex: number
+  blockType: string
+  snippet: string
+  /** the matched text with <mark> around the query term */
+  highlighted: string
+}
+
+export interface SearchResultRow {
+  id: string
+  title: string
+  slug: string
+  status: string
+  updatedAt: string
+  hits: SearchResultHit[]
+  totalMatches: number
+}
+
+/** Extract plain text from a block (recursively for questions). */
+function blockText(block: any): string {
+  if (!block) return ''
+  let text = ''
+  if (block.html) text += ' ' + block.html.replace(/<[^>]+>/g, ' ')
+  if (block.text) text += ' ' + block.text
+  if (block.term) text += ' ' + block.term
+  if (block.title) text += ' ' + block.title
+  if (block.caption) text += ' ' + block.caption
+  if (block.cite) text += ' ' + block.cite
+  if (block.alt) text += ' ' + block.alt
+  if (block.items) text += ' ' + block.items.map((i: any) => i.html?.replace(/<[^>]+>/g, ' ') || '').join(' ')
+  if (block.children) text += ' ' + block.children.map(blockText).join(' ')
+  return text.replace(/&[a-z]+;/gi, ' ').replace(/\s+/g, ' ').trim()
+}
+
+function makeSnippet(text: string, query: string, radius = 60): { snippet: string; highlighted: string } {
+  const lower = text.toLowerCase()
+  const idx = lower.indexOf(query.toLowerCase())
+  if (idx === -1) return { snippet: text.slice(0, radius * 2), highlighted: text.slice(0, radius * 2) }
+  const start = Math.max(0, idx - radius)
+  const end = Math.min(text.length, idx + query.length + radius)
+  const raw = text.slice(start, end)
+  // Build highlighted version with <mark> around matches (case-insensitive)
+  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const highlighted = raw.replace(new RegExp(escapedQuery, 'gi'), (m) => `<mark>${m}</mark>`)
+  return {
+    snippet: (start > 0 ? '…' : '') + raw + (end < text.length ? '…' : ''),
+    highlighted: (start > 0 ? '…' : '') + highlighted + (end < text.length ? '…' : ''),
+  }
+}
+
+/**
+ * Search across all documents' latest version content for a query string.
+ * Returns documents with hits (title/slug/status + per-block matches).
+ * Case-insensitive, matches plain text content (HTML tags stripped).
+ */
+export async function searchDocumentContent(query: string, limit = 20): Promise<SearchResultRow[]> {
+  const q = query.trim().toLowerCase()
+  if (!q) return []
+
+  const docs = await db.document.findMany({
+    orderBy: { updatedAt: 'desc' },
+    include: { latestVersion: true },
+    take: 100, // scan at most 100 latest versions
+  })
+
+  const results: SearchResultRow[] = []
+  for (const doc of docs) {
+    if (!doc.latestVersion) continue
+    let model: NoteDocument
+    try {
+      model = JSON.parse(doc.latestVersion.modelJson) as NoteDocument
+    } catch {
+      continue
+    }
+    const hits: SearchResultHit[] = []
+    for (let pi = 0; pi < model.pages.length; pi++) {
+      const page = model.pages[pi]
+      for (let bi = 0; bi < page.blocks.length; bi++) {
+        const block = page.blocks[bi] as any
+        const text = blockText(block)
+        if (!text) continue
+        if (text.toLowerCase().includes(q)) {
+          const { snippet, highlighted } = makeSnippet(text, q)
+          hits.push({
+            page: page.page,
+            blockIndex: bi,
+            blockType: block.type,
+            snippet,
+            highlighted,
+          })
+        }
+      }
+    }
+    if (hits.length > 0) {
+      results.push({
+        id: doc.id,
+        title: doc.title,
+        slug: doc.slug,
+        status: doc.status,
+        updatedAt: doc.updatedAt.toISOString(),
+        hits: hits.slice(0, 5), // cap hits per doc
+        totalMatches: hits.length,
+      })
+    }
+    if (results.length >= limit) break
+  }
+  return results
+}
+
+/** Return the most recently edited documents (for the library dashboard). */
+export async function listRecentDocuments(limit = 5): Promise<DocumentListRow[]> {
+  const docs = await db.document.findMany({
+    orderBy: { updatedAt: 'desc' },
+    take: limit,
+    include: {
+      _count: { select: { versions: true } },
+      latestVersion: { select: { number: true } },
+    },
+  })
+  return docs.map((d) => ({
+    id: d.id,
+    title: d.title,
+    slug: d.slug,
+    status: d.status,
+    updatedAt: d.updatedAt.toISOString(),
+    versionCount: d._count.versions,
+    latestVersionNumber: d.latestVersion?.number ?? null,
+  }))
+}

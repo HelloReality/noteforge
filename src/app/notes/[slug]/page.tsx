@@ -6,6 +6,7 @@ import { getPublishedBySlug } from '@/lib/server/storage'
 import { NoteRenderer } from '@/components/renderer'
 import { ReadingProgress } from '@/components/app/ReadingProgress'
 import { PublicViewerActions } from '@/components/app/PublicViewerActions'
+import { TableOfContents } from '@/components/app/TableOfContents'
 import { ShieldCheck, FileWarning, Globe } from 'lucide-react'
 import Link from 'next/link'
 
@@ -58,8 +59,11 @@ export default async function PublicNotePage({ params }: { params: Promise<{ slu
       </div>
 
       <div id="noteforge-note-content" className="flex-1 bg-stone-100">
-        <div className="mx-auto max-w-5xl px-4 py-8">
-          <NoteRenderer doc={data.model} mode="public" />
+        <div className="mx-auto flex max-w-6xl gap-8 px-4 py-8">
+          <div className="min-w-0 flex-1">
+            <NoteRenderer doc={data.model} mode="public" />
+          </div>
+          <TableOfContents />
         </div>
       </div>
 
