@@ -53,7 +53,7 @@ export default async function PublicNotePage({ params }: { params: Promise<{ slu
                 </span>
               )}
             </div>
-            <PublicViewerActions slug={slug} />
+            <PublicViewerActions slug={slug} title={data.document.title} />
           </div>
         </div>
       </div>

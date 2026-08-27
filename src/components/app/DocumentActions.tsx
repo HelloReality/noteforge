@@ -3,7 +3,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { MoreVertical, Copy, Download, Trash2, Loader2, Share2, Link2 } from 'lucide-react'
+import { MoreVertical, Copy, Download, Trash2, Loader2, Share2, Link2, FileText } from 'lucide-react'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -91,6 +91,12 @@ export function DocumentActions({ documentId, title, slug, published }: Document
           </DropdownMenuItem>
           <DropdownMenuItem onClick={handleExport}>
             <Download className="mr-2 h-4 w-4" /> Export .note.html
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => {
+            window.location.href = `/api/documents/${documentId}/export-markdown`
+            toast.success('Downloading .md')
+          }}>
+            <FileText className="mr-2 h-4 w-4" /> Export Markdown
           </DropdownMenuItem>
           {published && slug && (
             <>

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import {
   Undo2, Redo2, Save, Rocket, ChevronLeft, PanelLeft, PanelLeftClose, PanelRight, PanelRightClose, Circle,
-  Download, MoreVertical, Globe, GlobeLock, ExternalLink, Keyboard, Settings,
+  Download, MoreVertical, Globe, GlobeLock, ExternalLink, Keyboard, Settings, FileDown,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -172,6 +172,12 @@ export function EditorToolbar(props: EditorToolbarProps) {
                 toast.success('Downloading .note.html')
               }}>
                 <Download className="mr-2 h-4 w-4" /> Export .note.html
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => {
+                window.location.href = `/api/documents/${documentId}/export-markdown`
+                toast.success('Downloading .md')
+              }}>
+                <FileDown className="mr-2 h-4 w-4" /> Export Markdown
               </DropdownMenuItem>
               {isPublished && (
                 <DropdownMenuItem onClick={() => window.open(`/notes/${slug}`, '_blank')}>

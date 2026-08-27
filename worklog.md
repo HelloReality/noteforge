@@ -444,3 +444,77 @@ Priority recommendations for next phase:
 4. Add keyboard navigation in the search results (arrow keys + enter).
 5. Add a "share" dialog with social share buttons on the public viewer.
 6. Scaffold the formal vitest test suites (security.spec.ts, parse.fixtures.spec.ts, roundtrip.spec.ts) per Appendix A.4.
+
+---
+Task ID: 8 (webDevReview cron — round 5)
+Agent: main (orchestrator)
+Task: QA assessment + Markdown export + preview-mode toggle + share dialog
+
+Work Log:
+- Read full worklog to assess project status. Phase-1 + rounds 1-4 (lifecycle/search/shortcuts/syntax highlighting/settings/DnD/duplicate/reading progress/print/TOC/recently edited/full-text search) all complete and verified.
+- Performed QA: all 7 routes returned 200, zero console errors, zero page errors. Lint clean. App stable.
+- Selected work focus from round-4 recommendations: Markdown export (#2), preview-mode toggle (#3), share dialog (#5).
+
+New features built this round:
+
+1. Markdown export (src/lib/note-format/markdown.ts + API route):
+   - Created `serializeToMarkdown(doc)` serializer that converts a NoteDocument model to a Markdown string:
+     - YAML front matter (title, version, generator, format).
+     - title → `# H1`, heading → `##/###/#### H2/H3/H4`, paragraph → plain text.
+     - question → `**Q{n}**` followed by children blocks.
+     - list → bullet (`-`), numbered (`1. 2.`), check (`- [x]` / `- [ ]`).
+     - callout → blockquote with emoji + title + body.
+     - definition → `**term** — body`.
+     - quote → blockquote with optional `— *cite*`.
+     - divider → `---` with HTML comment.
+     - spacer → HTML comment.
+     - code → fenced code block with language.
+     - table → GFM table (parses the inner HTML to extract rows/cells, handles <th>/<td>, escapes pipes).
+     - image → `![alt](src)` with caption.
+     - diagram → fenced code block (mermaid/json/html) with title.
+   - Rich-text HTML → MD inline: <strong>→**, <em>→*, <code>→`, <mark>→==, <s>/<del>→~~, <a>→[text](url), <br>→line break, HTML entity decoding.
+   - API: Created GET /api/documents/:id/export-markdown — returns .md file with Content-Disposition: attachment.
+   - Added "Export Markdown" menu item to both the editor toolbar More actions menu and the library DocumentActions dropdown.
+   - Verified: 200 text/markdown content type, proper YAML front matter + headings + lists + callout blockquotes.
+
+2. Editor preview-mode toggle (preview vs public rendering):
+   - Added `renderMode` state ('preview' | 'public') to the Editor component (default 'preview').
+   - Added a segmented toggle control (Preview | Public) in the preview canvas header.
+   - The toggle changes the mode passed to `<NoteRenderer doc={doc} mode={renderMode} />`.
+   - 'preview' mode uses div wrappers; 'public' mode uses semantic h1/h2/p/blockquote tags (§11.4) — lets authors see exactly how the published page will look.
+   - The header label updates to show the current mode ("Live preview · {mode} mode · Shared Renderer").
+   - VLM confirmed: "toggle in the preview canvas header with options for Preview and Public; Preview appears to be active."
+
+3. Share dialog on the public viewer:
+   - Created src/components/app/ShareDialog.tsx (client component):
+     - Dialog with "Share this note" title.
+     - Native Web Share API button (calls navigator.share on mobile, falls back to copy).
+     - 4 social share buttons: Twitter (intent/tweet), Facebook (sharer.php), LinkedIn (share-offsite), Email (mailto) — each opens in a new tab with proper URL + title encoding.
+     - Copy link section with readonly URL input + copy button (with copied/check state).
+     - Color-coded hover states per social platform.
+   - Updated PublicViewerActions to include a Share button that opens the dialog, passing the document title.
+   - Updated the public viewer page to pass `title={data.document.title}` to PublicViewerActions.
+   - Verified: dialog opens, all 4 social buttons present (Twitter/Facebook/LinkedIn/mailto confirmed via DOM query), zero errors.
+   - VLM confirmed: "dialog title 'Share this note', social share buttons for Twitter/Facebook/LinkedIn/Email, copy link section at bottom."
+
+Stage Summary (verification results):
+- `bun run lint`: 0 errors, 0 warnings.
+- `bunx tsc --noEmit`: 0 errors in any new/modified file.
+- Markdown export API: 200 text/markdown, correct front matter + content.
+- All 7 routes return 200.
+- agent-browser QA: editor has Preview/Public toggle + Export Markdown in More actions; public viewer share dialog opens with all 4 social buttons + copy link.
+- VLM screenshot analysis: editor "toggle with Preview and Public, Preview active"; share dialog "Share this note with Twitter/Facebook/LinkedIn/Email + copy link section".
+
+Unresolved issues / risks:
+- The sandbox continues to kill background processes between Bash tool calls — required multiple restarts.
+- The dropdown menu in the editor toolbar can overlap the inspector panel on narrow viewports (minor, noted by VLM).
+- Direct-canvas block selection in edit mode is still a Phase-2 enhancement.
+- Formal vitest/playwright test suites (A.4) are still not scaffolded.
+
+Priority recommendations for next phase:
+1. Add block-level context menu (right-click) in the editor for quick actions.
+2. Add keyboard navigation in the search results (arrow keys + enter).
+3. Add a document preview mode that shows the public rendering full-screen (without editor chrome).
+4. Add inline rich-text editing (click a heading/paragraph in the preview to edit it directly).
+5. Add a "compare versions" view on the versions page.
+6. Scaffold the formal vitest test suites (security.spec.ts, parse.fixtures.spec.ts, roundtrip.spec.ts) per Appendix A.4.

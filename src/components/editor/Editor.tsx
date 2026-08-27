@@ -40,6 +40,7 @@ export function Editor({ documentId, title, slug, status, versionNumber, model }
   const [savedNote, setSavedNote] = useState('')
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [renderMode, setRenderMode] = useState<'preview' | 'public'>('preview')
   const titleRef = useRef<HTMLInputElement>(null)
 
   // initialise the store once on mount
@@ -211,19 +212,40 @@ export function Editor({ documentId, title, slug, status, versionNumber, model }
           <div className="flex items-center justify-between border-b border-stone-200 bg-white px-4 py-2">
             <div className="flex items-center gap-2 text-xs text-stone-500">
               <Eye className="h-3.5 w-3.5" />
-              <span>Live preview · preview mode · Shared Renderer</span>
+              <span>Live preview · {renderMode} mode · Shared Renderer</span>
             </div>
-            <div className="flex items-center gap-1 lg:hidden">
-              <Button variant="ghost" size="sm" onClick={() => setLeftOpen((v) => !v)} className="h-7 px-2">
-                {leftOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => setRightOpen((v) => !v)} className="h-7 px-2">
-                {rightOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRight className="h-4 w-4" />}
-              </Button>
+            <div className="flex items-center gap-1">
+              {/* Preview mode toggle */}
+              <div className="hidden items-center rounded-md border border-stone-200 bg-stone-50 p-0.5 sm:flex">
+                <button
+                  onClick={() => setRenderMode('preview')}
+                  className={cn(
+                    'rounded px-2.5 py-1 text-xs font-medium transition',
+                    renderMode === 'preview' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700',
+                  )}
+                  title="Preview mode (div wrappers)"
+                >Preview</button>
+                <button
+                  onClick={() => setRenderMode('public')}
+                  className={cn(
+                    'rounded px-2.5 py-1 text-xs font-medium transition',
+                    renderMode === 'public' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700',
+                  )}
+                  title="Public mode (semantic h1/h2/p tags)"
+                >Public</button>
+              </div>
+              <div className="flex items-center gap-1 lg:hidden">
+                <Button variant="ghost" size="sm" onClick={() => setLeftOpen((v) => !v)} className="h-7 px-2">
+                  {leftOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setRightOpen((v) => !v)} className="h-7 px-2">
+                  {rightOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRight className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
           </div>
           <div className="flex-1 overflow-auto bg-stone-100 p-4">
-            <NoteRenderer doc={doc} mode="preview" />
+            <NoteRenderer doc={doc} mode={renderMode} />
           </div>
         </section>
 
