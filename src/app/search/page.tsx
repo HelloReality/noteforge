@@ -47,6 +47,7 @@ export default function SearchPage() {
   const [totalMatches, setTotalMatches] = useState(0)
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
+  const [focusedIndex, setFocusedIndex] = useState(-1)
   const inputRef = useRef<HTMLInputElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -91,6 +92,30 @@ export default function SearchPage() {
     if (initialQuery) doSearch(initialQuery)
   }, [])
 
+  // Reset focused index when results change
+  useEffect(() => { setFocusedIndex(results.length > 0 ? 0 : -1) }, [results])
+
+  // Keyboard navigation: ArrowDown/Up to move, Enter to open
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.target === inputRef.current) return // only when not in input
+      if (results.length === 0) return
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setFocusedIndex((i) => Math.min(results.length - 1, i + 1))
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setFocusedIndex((i) => Math.max(0, i - 1))
+      } else if (e.key === 'Enter' && focusedIndex >= 0) {
+        e.preventDefault()
+        const r = results[focusedIndex]
+        if (r) router.push(`/documents/${r.id}/edit`)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [results, focusedIndex, router])
+
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-8">
       <div className="mb-6 flex items-center gap-2 text-sm">
@@ -124,23 +149,43 @@ export default function SearchPage() {
       </div>
 
       {searched && !loading && (
-        <div className="mb-4 text-sm text-stone-500">
-          {results.length === 0 ? (
-            <span>No results for <strong className="text-stone-700">“{query}”</strong></span>
-          ) : (
-            <span>
-              <strong className="text-stone-700">{results.length}</strong> document{results.length === 1 ? '' : 's'}
-              {' · '}
-              <strong className="text-stone-700">{totalMatches}</strong> match{totalMatches === 1 ? '' : 'es'}
-              {' '}for <strong className="text-stone-700">“{query}”</strong>
+        <div className="mb-4 flex items-center justify-between text-sm text-stone-500">
+          <div>
+            {results.length === 0 ? (
+              <span>No results for <strong className="text-stone-700">"{query}"</strong></span>
+            ) : (
+              <span>
+                <strong className="text-stone-700">{results.length}</strong> document{results.length === 1 ? '' : 's'}
+                {' · '}
+                <strong className="text-stone-700">{totalMatches}</strong> match{totalMatches === 1 ? '' : 'es'}
+              {' '}for <strong className="text-stone-700">"{query}"</strong>
+            </span>
+          )}
+          </div>
+          {results.length > 0 && (
+            <span className="hidden items-center gap-1.5 text-xs text-stone-400 sm:flex">
+              <kbd className="rounded border border-stone-300 bg-stone-50 px-1.5 py-0.5 font-mono text-[10px]">↑</kbd>
+              <kbd className="rounded border border-stone-300 bg-stone-50 px-1.5 py-0.5 font-mono text-[10px]">↓</kbd>
+              to navigate
+              <kbd className="ml-1 rounded border border-stone-300 bg-stone-50 px-1.5 py-0.5 font-mono text-[10px]">↵</kbd>
+              to open
             </span>
           )}
         </div>
       )}
 
       <div className="space-y-4">
-        {results.map((r) => (
-          <div key={r.id} className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm transition hover:border-amber-300 hover:shadow-md">
+        {results.map((r, idx) => (
+          <div
+            key={r.id}
+            ref={el => { if (idx === focusedIndex && el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }) }}
+            className={cn(
+              'rounded-xl border bg-white p-5 shadow-sm transition',
+              idx === focusedIndex
+                ? 'border-amber-400 ring-2 ring-amber-300 shadow-md'
+                : 'border-stone-200 hover:border-amber-300 hover:shadow-md',
+            )}
+          >
             <div className="mb-3 flex items-start justify-between gap-2">
               <Link
                 href={`/documents/${r.id}/edit`}

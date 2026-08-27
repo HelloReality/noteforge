@@ -18,8 +18,12 @@ import { Button } from '@/components/ui/button'
 import {
   Plus, Trash2, ChevronUp, ChevronDown, Heading1, Pilcrow, List, HelpCircle,
   MessageSquareQuote, StickyNote, Quote, Minus, Square, Code2, Table, Image as ImageIcon,
-  Spline, Type, Layers, GripVertical, Copy,
+  Spline, Type, Layers, GripVertical, Copy, WrapText,
 } from 'lucide-react'
+import {
+  ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem,
+  ContextMenuSeparator, ContextMenuLabel,
+} from '@/components/ui/context-menu'
 
 const BLOCK_ICON: Record<Block['type'], React.ReactNode> = {
   title: <Type className="h-3.5 w-3.5" />,
@@ -60,6 +64,7 @@ export function Outline({ currentPage }: { currentPage: number }) {
   const addBlock = useEditorStore((s) => s.addBlock)
   const reorderBlock = useEditorStore((s) => s.reorderBlock)
   const duplicateBlock = useEditorStore((s) => s.duplicateBlock)
+  const wrapInQuestion = useEditorStore((s) => s.wrapInQuestion)
   const [adding, setAdding] = useState(false)
 
   const sensors = useSensors(
@@ -132,6 +137,7 @@ export function Outline({ currentPage }: { currentPage: number }) {
                 onDelete={deleteBlock}
                 onMove={moveBlock}
                 onDuplicate={duplicateBlock}
+                onWrapInQuestion={wrapInQuestion}
               />
             ))}
           </SortableContext>
@@ -179,6 +185,7 @@ function SortableBlockRow(props: {
   onDelete: (p: BlockPath) => void
   onMove: (p: BlockPath, dir: 'up' | 'down') => void
   onDuplicate: (p: BlockPath) => void
+  onWrapInQuestion: (p: BlockPath) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.id })
 
@@ -209,7 +216,7 @@ function SortableBlockRow(props: {
 }
 
 function BlockRowInner({
-  block, path, depth, selectedPath, pathEq, onSelect, onDelete, onMove, onDuplicate, dragHandle,
+  block, path, depth, selectedPath, pathEq, onSelect, onDelete, onMove, onDuplicate, onWrapInQuestion, dragHandle,
 }: {
   block: Block
   path: BlockPath
@@ -220,32 +227,64 @@ function BlockRowInner({
   onDelete: (p: BlockPath) => void
   onMove: (p: BlockPath, dir: 'up' | 'down') => void
   onDuplicate: (p: BlockPath) => void
+  onWrapInQuestion: (p: BlockPath) => void
   dragHandle: React.ReactNode
 }) {
   const selected = pathEq(selectedPath, path)
   const snippet = blockSnippet(block)
   const hasChildren = block.type === 'question' && block.children.length > 0
+  const isTopLevel = path.length === 2
+  const canWrap = isTopLevel && block.type !== 'question'
 
   return (
     <div>
-      <div
-        onClick={() => onSelect(selected ? null : path)}
-        className={cn(
-          'group flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1.5 text-sm transition',
-          selected ? 'bg-amber-100 text-amber-900 ring-1 ring-amber-300' : 'text-stone-700 hover:bg-stone-100',
-        )}
-        style={{ paddingLeft: 8 + depth * 12 }}
-      >
-        <span className="shrink-0 opacity-30 transition group-hover:opacity-100">{dragHandle}</span>
-        <span className="shrink-0 text-stone-400">{BLOCK_ICON[block.type]}</span>
-        <span className="flex-1 truncate text-xs">{snippet}</span>
-        <span className="hidden shrink-0 gap-0.5 group-hover:flex">
-          <IconBtn title="Duplicate" onClick={(e) => { e.stopPropagation(); onDuplicate(path) }}><Copy className="h-3 w-3" /></IconBtn>
-          <IconBtn title="Up" onClick={(e) => { e.stopPropagation(); onMove(path, 'up') }}><ChevronUp className="h-3 w-3" /></IconBtn>
-          <IconBtn title="Down" onClick={(e) => { e.stopPropagation(); onMove(path, 'down') }}><ChevronDown className="h-3 w-3" /></IconBtn>
-          <IconBtn title="Delete" onClick={(e) => { e.stopPropagation(); onDelete(path) }}><Trash2 className="h-3 w-3" /></IconBtn>
-        </span>
-      </div>
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <div
+            onClick={() => onSelect(selected ? null : path)}
+            className={cn(
+              'group flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1.5 text-sm transition',
+              selected ? 'bg-amber-100 text-amber-900 ring-1 ring-amber-300' : 'text-stone-700 hover:bg-stone-100',
+            )}
+            style={{ paddingLeft: 8 + depth * 12 }}
+          >
+            <span className="shrink-0 opacity-30 transition group-hover:opacity-100">{dragHandle}</span>
+            <span className="shrink-0 text-stone-400">{BLOCK_ICON[block.type]}</span>
+            <span className="flex-1 truncate text-xs">{snippet}</span>
+            <span className="hidden shrink-0 gap-0.5 group-hover:flex">
+              <IconBtn title="Duplicate" onClick={(e) => { e.stopPropagation(); onDuplicate(path) }}><Copy className="h-3 w-3" /></IconBtn>
+              <IconBtn title="Up" onClick={(e) => { e.stopPropagation(); onMove(path, 'up') }}><ChevronUp className="h-3 w-3" /></IconBtn>
+              <IconBtn title="Down" onClick={(e) => { e.stopPropagation(); onMove(path, 'down') }}><ChevronDown className="h-3 w-3" /></IconBtn>
+              <IconBtn title="Delete" onClick={(e) => { e.stopPropagation(); onDelete(path) }}><Trash2 className="h-3 w-3" /></IconBtn>
+            </span>
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent className="w-52">
+          <ContextMenuLabel className="text-xs text-stone-400">{BLOCK_LABEL[block.type]} · {snippet.slice(0, 30)}</ContextMenuLabel>
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={() => onDuplicate(path)}>
+            <Copy className="mr-2 h-4 w-4" /> Duplicate
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => onMove(path, 'up')}>
+            <ChevronUp className="mr-2 h-4 w-4" /> Move up
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => onMove(path, 'down')}>
+            <ChevronDown className="mr-2 h-4 w-4" /> Move down
+          </ContextMenuItem>
+          {canWrap && (
+            <>
+              <ContextMenuSeparator />
+              <ContextMenuItem onClick={() => onWrapInQuestion(path)}>
+                <WrapText className="mr-2 h-4 w-4" /> Wrap in question
+              </ContextMenuItem>
+            </>
+          )}
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={() => onDelete(path)} className="text-rose-600 focus:text-rose-700 focus:bg-rose-50">
+            <Trash2 className="mr-2 h-4 w-4" /> Delete
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
       {hasChildren && (block as any).children.map((c: Block, ci: number) => (
         <BlockRowInner
           key={ci}
@@ -258,6 +297,7 @@ function BlockRowInner({
           onDelete={onDelete}
           onMove={onMove}
           onDuplicate={onDuplicate}
+          onWrapInQuestion={onWrapInQuestion}
           dragHandle={<span className="hidden"><GripVertical className="h-3.5 w-3.5" /></span>}
         />
       ))}

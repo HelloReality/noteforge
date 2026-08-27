@@ -29,6 +29,7 @@ interface EditorState {
   moveBlock: (path: BlockPath, dir: 'up' | 'down') => void
   reorderBlock: (from: BlockPath, toIndex: number) => void
   duplicateBlock: (path: BlockPath) => void
+  wrapInQuestion: (path: BlockPath) => void
   replaceBlock: (path: BlockPath, block: Block) => void
   undo: () => void
   redo: () => void
@@ -181,6 +182,24 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         parent.children.splice(c + 1, 0, dup)
       }
     }
+    return withHistory(s, next)
+  }),
+
+  wrapInQuestion: (path) => set((s) => {
+    if (!s.doc) return {}
+    const [p, b, c] = path
+    if (c !== undefined) return {} // only top-level blocks can be wrapped
+    const next = clone(s.doc)
+    const arr = next.pages[p].blocks
+    const block = arr[b]
+    // Don't wrap a question in a question
+    if (block.type === 'question') return {}
+    const question: Block = {
+      type: 'question',
+      classes: [],
+      children: [block],
+    }
+    arr.splice(b, 1, question)
     return withHistory(s, next)
   }),
 

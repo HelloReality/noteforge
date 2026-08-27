@@ -518,3 +518,81 @@ Priority recommendations for next phase:
 4. Add inline rich-text editing (click a heading/paragraph in the preview to edit it directly).
 5. Add a "compare versions" view on the versions page.
 6. Scaffold the formal vitest test suites (security.spec.ts, parse.fixtures.spec.ts, roundtrip.spec.ts) per Appendix A.4.
+
+---
+Task ID: 9 (webDevReview cron — round 6)
+Agent: main (orchestrator)
+Task: QA assessment + block context menu + search keyboard nav + fullscreen preview + version comparison
+
+Work Log:
+- Read full worklog to assess project status. Phase-1 + rounds 1-5 (lifecycle/search/shortcuts/syntax highlighting/settings/DnD/duplicate/reading progress/print/TOC/recently edited/full-text search/Markdown export/preview-mode toggle/share dialog) all complete and verified.
+- Performed QA: all 7 routes returned 200, zero console errors, zero page errors. Lint clean. App stable.
+- Selected work focus from round-5 recommendations: block context menu (#1), search keyboard nav (#2), fullscreen preview (#3), version comparison (#5).
+
+New features built this round:
+
+1. Block-level context menu (right-click) in the editor:
+   - Added `wrapInQuestion(path)` to the editor store (src/lib/store/editor-store.ts) — wraps a top-level block in a new question block (non-question blocks only).
+   - Updated src/components/editor/Outline.tsx to wrap each block row in a ContextMenu (from @/components/ui/context-menu):
+     - Right-click opens a menu with: Duplicate, Move up, Move down, Wrap in question (top-level non-question only), Delete.
+     - Menu header shows the block type + snippet.
+     - Delete item is styled rose for danger.
+   - Verified: 9 context menu triggers present, menu opens on right-click with all options.
+   - VLM confirmed: "right-click context menu with Duplicate, Move up, Move down, Wrap in question, Delete."
+
+2. Keyboard navigation in search results:
+   - Added `focusedIndex` state to the search page (src/app/search/page.tsx).
+   - ArrowDown/ArrowUp moves focus between results; Enter navigates to the focused result's edit page.
+   - Focused result gets an amber ring-2 border + scrollIntoView for visibility.
+   - Added a keyboard hint (↑ ↓ to navigate, ↵ to open) with kbd badges next to the results count.
+   - Verified: keyboard hint visible, focus tracking works.
+   - Reset focused index to 0 when results change.
+
+3. Fullscreen preview page (/documents/[id]/preview):
+   - Created src/app/documents/[id]/preview/page.tsx (server component):
+     - Renders the NoteRenderer in public mode full-screen (no editor 3-pane layout).
+     - Includes ReadingProgress, TableOfContents, and a slim header with "Editor" back link, "preview mode" badge, "Edit" button, and ".md" export link.
+     - Clean layout: just the note content + TOC sidebar + reading progress.
+   - Added "Fullscreen preview" item to the editor's More actions dropdown (opens in new tab).
+   - VLM confirmed: "header with 'Editor' back link and 'preview mode' badge, 'Edit' button, '.md' indicator."
+
+4. Version comparison view on the versions page:
+   - Enhanced src/app/documents/[id]/versions/page.tsx to support a `?compare=v{N}` query param:
+     - When comparing, shows a "COMPARING v{N} → v{latest} (latest)" header with an "Exit compare" link.
+     - Shows 6 diff stat badges (pages, blocks, words, questions, diagrams, tables) with old→new values and +/- deltas (green for additions, rose for removals, stone for unchanged).
+     - Shows two side-by-side previews: left = selected version, right = latest version (both with maxHeight: 70vh + overflow-auto).
+   - Added "Compare" link on each non-latest version card in the list.
+   - Added "Compare with latest" button next to the Restore button on the preview pane.
+   - VLM confirmed: "COMPARING V1 → V3 (LATEST) header, diff stat badges, side-by-side previews with v1 selected version and v3 latest version labels."
+
+Editor store additions (src/lib/store/editor-store.ts):
+- wrapInQuestion(path: BlockPath) — removes the block at path, creates a new question block containing it as a child, and splices it back in at the same position. Only works for top-level non-question blocks.
+
+Stage Summary (verification results):
+- `bun run lint`: 0 errors, 0 warnings.
+- `bunx tsc --noEmit`: 0 errors in any new/modified file.
+- All 8 routes return 200 (including new /documents/[id]/preview).
+- agent-browser QA:
+  - Editor: 9 context menu triggers, right-click opens menu with "Wrap in question" option.
+  - Search: keyboard hint (↑↓↵) visible, focus tracking works.
+  - Fullscreen preview: "preview mode" badge + "Editor" back link + "Edit" button present.
+  - Version comparison: "Comparing v1 → v3" header + Exit compare link + diff badges + side-by-side previews.
+  - Zero console errors on any route.
+- VLM screenshot analysis:
+  - Compare: "COMPARING V1 → V3 (LATEST) header, diff stat badges (pages/blocks/words/questions/diagrams/tables), side-by-side previews."
+  - Context menu: "Duplicate, Move up, Move down, Wrap in question, Delete."
+  - Fullscreen preview: "header with Editor back link and preview mode badge, Edit button, .md indicator."
+
+Unresolved issues / risks:
+- The sandbox continues to kill background processes between Bash tool calls — required multiple restarts.
+- The version comparison is structural (block/page/word counts) rather than a content diff — a character-level diff would be a future enhancement.
+- Direct-canvas block selection in edit mode is still a Phase-2 enhancement.
+- Formal vitest/playwright test suites (A.4) are still not scaffolded.
+
+Priority recommendations for next phase:
+1. Add inline rich-text editing (click a heading/paragraph in the preview to edit it directly).
+2. Add a character-level content diff in the version comparison.
+3. Add a "recently viewed" section using localStorage.
+4. Add dark mode support (next-themes is installed).
+5. Add a block-level search within the editor (find blocks by text).
+6. Scaffold the formal vitest test suites (security.spec.ts, parse.fixtures.spec.ts, roundtrip.spec.ts) per Appendix A.4.

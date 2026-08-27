@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import {
   Undo2, Redo2, Save, Rocket, ChevronLeft, PanelLeft, PanelLeftClose, PanelRight, PanelRightClose, Circle,
-  Download, MoreVertical, Globe, GlobeLock, ExternalLink, Keyboard, Settings, FileDown,
+  Download, MoreVertical, Globe, GlobeLock, ExternalLink, Keyboard, Settings, FileDown, Maximize,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -200,6 +200,12 @@ export function EditorToolbar(props: EditorToolbarProps) {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onShowSettings}>
                 <Settings className="mr-2 h-4 w-4" /> Document settings…
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <a href={`/documents/${documentId}/preview`} target="_blank">
+                  <Maximize className="mr-2 h-4 w-4" /> Fullscreen preview
+                </a>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
