@@ -160,3 +160,66 @@ Key decisions:
 - Sticky footer achieved via root `min-h-screen flex flex-col` + `mt-auto` footer (layout.tsx).
 
 Project status: Phase-1 NoteForge is feature-complete and browser-verified. Remaining optional work: direct-canvas block selection in edit mode, version restore-to-new-version action, syntax highlighting in code blocks, and the formal vitest/playwright test suites (A.4) scaffolded against the fixtures.
+
+---
+Task ID: 4 (webDevReview cron — round 1)
+Agent: main (orchestrator)
+Task: QA assessment + styling polish + new features (document lifecycle, search/filter, export, restore)
+
+Work Log:
+- Read full worklog to assess project status. Phase-1 NoteForge was feature-complete and browser-verified (Tasks 1, 2-a, 2-b, 3).
+- Performed QA with agent-browser across all routes (home, import, review, edit, versions, public) — all returned 200, zero console errors, zero page errors on every route.
+- Captured 5 screenshots and analyzed them with VLM (glm-5v-turbo) to identify styling improvement opportunities.
+- VLM analysis confirmed: clean design, good hierarchy, but identified card height inconsistency, light metadata contrast, verbose footer, and opportunities for hero/stat tiles.
+
+Backend additions (src/lib/server/storage.ts + new API routes):
+- Added `duplicateDocument(id)` — clones latest version's model+warnings into a new Document (status='draft', slug de-conflicted).
+- Added `deleteDocument(id)` — permanently deletes document + all versions (cascade).
+- Added `restoreVersion(documentId, number)` — creates a NEW version (append-only) from an old version's model+warnings, updates latestVersionId. Non-destructive.
+- Added `getDocumentStats(id)` — aggregates pages, blocks, words, diagrams, tables, questions.
+- Added `?stats=1` query param to GET /api/documents/[id] to include stats.
+- Created POST /api/documents/[id]/duplicate (201 on success, 404 if not found).
+- Created GET /api/documents/[id]/export — returns serialized .note.html as attachment (Content-Disposition: attachment).
+- Created POST /api/documents/[id]/versions/[number]/restore — append-only restore (201 with new version number).
+- Added DELETE method to /api/documents/[id]/route.ts (also preserved existing GET + PATCH).
+- Verified all 4 new endpoints work via curl: duplicate→201, export→200 text/html, restore→201, delete via lifecycle.
+- Verified storage functions directly with bun -e: duplicate creates doc, stats aggregates correctly, restore creates v4, delete removes doc.
+
+Frontend additions (new components + page updates):
+- src/components/app/DocumentActions.tsx (client) — dropdown menu with Duplicate / Export .note.html / Delete (with AlertDialog confirmation). Uses sonner toasts + router.refresh().
+- src/components/app/LibraryToolbar.tsx (client) — search input + status filter (all/draft/review/published) + sort (updated/title/status) + count display.
+- src/components/app/LibraryClient.tsx (client) — holds search/filter/sort state via useMemo, filters+sorts docs, renders grid with empty-state for "no matches".
+- src/components/app/RestoreVersionButton.tsx (client) — restore button with AlertDialog confirmation, calls restore API, shows toast, router.refresh().
+- Rewrote src/components/app/DocumentCard.tsx — added DocumentActions menu, document stats grid (pages/blocks/diagrams/tables), hover lift effect (-translate-y-0.5), mt-auto for consistent card heights, improved border-t separator.
+- Rewrote src/app/page.tsx — gradient hero section with version badge, stat tiles (published/review/drafts with color coding), batch-fetches stats for all docs, security callout. Uses LibraryClient for search/filter/sort.
+- Updated src/components/editor/EditorToolbar.tsx — added Export button (icon), Unpublish button (shown when published), More actions dropdown menu (Export, View public page, Publish/Unpublish), GlobeLock/Globe/ExternalLink icons.
+- Updated src/components/editor/Editor.tsx — added handleUnpublish (PATCH status→review), passed onUnpublish to toolbar.
+- Updated src/app/documents/[id]/versions/page.tsx — replaced placeholder RestoreButton link with real RestoreVersionButton client component (creates new version via API).
+
+Styling improvements:
+- Hero section with amber→white→stone gradient background, inline version badge.
+- Color-coded stat tiles (emerald for published, amber for review, stone for drafts).
+- Document cards: hover lift (-translate-y-0.5 + shadow-md), consistent heights via flex h-full + mt-auto, stats grid inside cards, border-t action separator.
+- Library toolbar: full-width search with icon, inline filter+sort dropdowns, count indicator.
+- Editor toolbar: Export icon button, contextual Publish/Unpublish button (emerald when publishing, stone when unpublishing), More actions overflow menu.
+
+Stage Summary (verification results):
+- `bun run lint`: 0 errors, 0 warnings.
+- `bunx tsc --noEmit`: 0 errors in any new/modified file (only pre-existing parse.ts:201 remains, out of scope).
+- agent-browser QA: home page renders hero + stat tiles + search + filter + sort + 4 document cards with actions menus (all confirmed in snapshot). Editor shows Export + Unpublish + More actions buttons (confirmed in snapshot + VLM analysis). No console errors on any route.
+- API verification: duplicate→201 (creates new doc with "-copy" slug), export→200 text/html (Content-Disposition: attachment), restore→201 (creates new version number), delete→works. All verified via curl.
+- Direct bun verification: duplicateDocument, deleteDocument, restoreVersion, getDocumentStats all return correct results.
+- VLM screenshot analysis: hero "visually appealing", stat tiles "extremely clear", toolbar "well-placed", cards "consistent and well-spaced", editor toolbar "well-organized".
+
+Unresolved issues / risks:
+- The sandbox kills background processes (dev server) between Bash tool calls — had to restart `bun run dev` multiple times. The server is currently running (PID 9606). Future cron rounds may need to restart it.
+- Direct-canvas block selection in edit mode (clicking a block in the preview to select it) is still a Phase-2 enhancement — currently selection is via the outline panel.
+- Formal vitest/playwright test suites (A.4) are still not scaffolded — the fixtures + verify-parse.ts script serve as the test contract.
+
+Priority recommendations for next phase:
+1. Add keyboard shortcuts (Ctrl+Z/Y for undo/redo, Ctrl+S for save, Ctrl+E for export).
+2. Add block-level drag-and-drop reordering in the editor outline (using @dnd-kit, already installed).
+3. Add a "share" / copy-public-URL action on published documents.
+4. Add a document settings dialog (edit slug, delete from within editor).
+5. Add syntax highlighting for code blocks (react-syntax-highlighter is already installed).
+6. Scaffold the formal vitest test suites (security.spec.ts, parse.fixtures.spec.ts, roundtrip.spec.ts) per Appendix A.4.

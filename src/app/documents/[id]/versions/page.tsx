@@ -4,9 +4,9 @@ import { notFound } from 'next/navigation'
 import { listVersions, getVersion, getDocumentWithLatest } from '@/lib/server/storage'
 import { NoteRenderer } from '@/components/renderer'
 import { WarningsPanel } from '@/components/app/WarningsPanel'
-import { ChevronLeft, History, FileText, RotateCcw, Eye } from 'lucide-react'
+import { RestoreVersionButton } from '@/components/app/RestoreVersionButton'
+import { ChevronLeft, History, FileText, Eye } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
 
 export const dynamic = 'force-dynamic'
 
@@ -98,7 +98,7 @@ export default async function VersionsPage({
               Previewing v{selected?.number}
             </h2>
             {selected && selected.number !== latestNum && (
-              <RestoreButton documentId={id} note={`Restore of v${selected.number}`} />
+              <RestoreVersionButton documentId={id} number={selected.number} />
             )}
           </div>
           {selectedVersion ? (
@@ -118,23 +118,3 @@ export default async function VersionsPage({
     </div>
   )
 }
-
-function RestoreButton({ documentId, note }: { documentId: string; note: string }) {
-  // Server action-free: render a link that POSTs to the versions endpoint is non-trivial
-  // without a client component. For Phase 1 we link to the editor where the
-  // latest model is already loaded; restoring an old version can be done by
-  // editing. (A full restore = create a new version from the old model — a
-  // small follow-up.)
-  return (
-    <Link
-      href={`/documents/${documentId}/edit`}
-      className="inline-flex items-center gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100"
-      title={note}
-    >
-      <RotateCcw className="h-3.5 w-3.5" /> Restore in editor
-    </Link>
-  )
-}
-
-// keep Button import referenced
-void Button

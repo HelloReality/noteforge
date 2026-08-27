@@ -358,3 +358,95 @@ export class DocumentNotFoundError extends Error {
     this.documentId = documentId
   }
 }
+
+// ── Document lifecycle: duplicate / delete / stats ──────────────────────────
+
+/** Duplicate a document (its latest version's model + warnings) into a new
+ *  Document with status='draft' and slug "<base>-copy" (de-conflicted). */
+export async function duplicateDocument(id: string): Promise<{ documentId: string; versionId: string; slug: string }> {
+  const source = await getDocumentWithLatest(id)
+  if (!source || !source.model) throw new DocumentNotFoundError(id)
+  const slug = await uniqueSlug(slugify(`${source.title} copy`))
+  const modelJson = JSON.stringify(source.model)
+  const warningsJson = JSON.stringify(source.warnings || [])
+  return db.$transaction(async (tx) => {
+    const document = await tx.document.create({
+      data: { title: `${source.title} (copy)`, slug, status: 'draft' },
+    })
+    const version = await tx.version.create({
+      data: { documentId: document.id, number: 1, modelJson, warningsJson, note: 'Duplicated from another document' },
+    })
+    await tx.document.update({ where: { id: document.id }, data: { latestVersionId: version.id } })
+    return { documentId: document.id, versionId: version.id, slug }
+  })
+}
+
+/** Delete a document and all its versions (cascade). */
+export async function deleteDocument(id: string): Promise<void> {
+  // ensure it exists (throws DocumentNotFoundError otherwise)
+  const doc = await db.document.findUnique({ where: { id }, select: { id: true } })
+  if (!doc) throw new DocumentNotFoundError(id)
+  await db.document.delete({ where: { id } })
+}
+
+/** Restore an old version by creating a NEW version (append-only) with that
+ *  version's model + warnings. Returns the new version number. */
+export async function restoreVersion(documentId: string, number: number): Promise<{ versionId: string; number: number }> {
+  const source = await getVersion(documentId, number)
+  if (!source) throw new DocumentNotFoundError(documentId)
+  const modelJson = JSON.stringify(source.model)
+  const warningsJson = JSON.stringify(source.warnings || [])
+  return db.$transaction(async (tx) => {
+    const latest = await tx.version.findFirst({
+      where: { documentId }, orderBy: { number: 'desc' }, select: { number: true },
+    })
+    const nextNumber = (latest?.number ?? 0) + 1
+    const version = await tx.version.create({
+      data: {
+        documentId, number: nextNumber, modelJson, warningsJson,
+        note: `Restored from v${number}`,
+      },
+    })
+    await tx.document.update({
+      where: { id: documentId },
+      data: { latestVersionId: version.id },
+    })
+    return { versionId: version.id, number: nextNumber }
+  })
+}
+
+/** Aggregate document statistics (page count, block count, word count, diagram count). */
+export interface DocumentStats {
+  pages: number
+  blocks: number
+  words: number
+  diagrams: number
+  tables: number
+  questions: number
+}
+export async function getDocumentStats(id: string): Promise<DocumentStats | null> {
+  const data = await getDocumentWithLatest(id)
+  if (!data || !data.model) return null
+  const model = data.model
+  let blocks = 0
+  let words = 0
+  let diagrams = 0
+  let tables = 0
+  let questions = 0
+  const countBlock = (b: any) => {
+    blocks++
+    switch (b.type) {
+      case 'question':
+        questions++
+        b.children?.forEach(countBlock)
+        break
+      case 'diagram': diagrams++; break
+      case 'table': tables++; break
+    }
+    const html = b.html || b.text || b.term || ''
+    if (html) words += html.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length
+    if (b.items) words += b.items.map((i: any) => i.html?.replace(/<[^>]+>/g, ' ') || '').join(' ').split(/\s+/).filter(Boolean).length
+  }
+  for (const page of model.pages) for (const b of page.blocks) countBlock(b)
+  return { pages: model.pages.length, blocks, words, diagrams, tables, questions }
+}

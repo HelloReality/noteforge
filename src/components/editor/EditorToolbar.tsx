@@ -8,9 +8,14 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import {
   Undo2, Redo2, Save, Rocket, ChevronLeft, PanelLeft, PanelLeftClose, PanelRight, PanelRightClose, Circle,
+  Download, MoreVertical, Globe, GlobeLock, ExternalLink,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 export interface EditorToolbarProps {
   documentId: string
@@ -23,6 +28,7 @@ export interface EditorToolbarProps {
   publishing: boolean
   onSave: () => void
   onPublish: () => void
+  onUnpublish: () => void
   leftOpen: boolean
   rightOpen: boolean
   onToggleLeft: () => void
@@ -30,7 +36,8 @@ export interface EditorToolbarProps {
 }
 
 export function EditorToolbar(props: EditorToolbarProps) {
-  const { documentId, slug, status, versionNumber, dirty, saving, publishing, onSave, onPublish } = props
+  const { documentId, slug, status, versionNumber, dirty, saving, publishing, onSave, onPublish, onUnpublish, title } = props
+  const isPublished = status === 'published'
   const doc = useEditorStore((s) => s.doc)
   const currentPage = useEditorStore((s) => s.currentPage)
   const setCurrentPage = useEditorStore((s) => s.setCurrentPage)
@@ -117,14 +124,68 @@ export function EditorToolbar(props: EditorToolbarProps) {
             <span className="ml-1.5">Save</span>
           </Button>
           <Button
+            variant="outline"
             size="sm"
-            onClick={onPublish}
-            disabled={publishing}
-            className="h-8 bg-emerald-600 hover:bg-emerald-700"
+            onClick={() => {
+              window.location.href = `/api/documents/${documentId}/export`
+              toast.success('Downloading .note.html')
+            }}
+            className="hidden h-8 sm:inline-flex"
+            title="Export as .note.html"
           >
-            <Rocket className="h-4 w-4" />
-            <span className="ml-1.5">Publish</span>
+            <Download className="h-4 w-4" />
           </Button>
+          {isPublished ? (
+            <Button
+              size="sm"
+              onClick={onUnpublish}
+              disabled={publishing}
+              className="h-8 bg-stone-600 hover:bg-stone-700"
+            >
+              <GlobeLock className="h-4 w-4" />
+              <span className="ml-1.5">Unpublish</span>
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              onClick={onPublish}
+              disabled={publishing}
+              className="h-8 bg-emerald-600 hover:bg-emerald-700"
+            >
+              <Rocket className="h-4 w-4" />
+              <span className="ml-1.5">Publish</span>
+            </Button>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label="More actions">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => {
+                window.location.href = `/api/documents/${documentId}/export`
+                toast.success('Downloading .note.html')
+              }}>
+                <Download className="mr-2 h-4 w-4" /> Export .note.html
+              </DropdownMenuItem>
+              {isPublished && (
+                <DropdownMenuItem onClick={() => window.open(`/notes/${slug}`, '_blank')}>
+                  <ExternalLink className="mr-2 h-4 w-4" /> View public page
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              {isPublished ? (
+                <DropdownMenuItem onClick={onUnpublish} disabled={publishing} className="text-stone-600 focus:text-stone-700">
+                  <GlobeLock className="mr-2 h-4 w-4" /> Unpublish
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onClick={onPublish} disabled={publishing} className="text-emerald-700 focus:text-emerald-800 focus:bg-emerald-50">
+                  <Globe className="mr-2 h-4 w-4" /> Publish
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

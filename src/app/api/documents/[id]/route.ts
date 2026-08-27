@@ -1,24 +1,34 @@
-// NoteForge — GET /api/documents/:id and PATCH /api/documents/:id (§8)
-// GET returns the full document + latest version (parsed model + warnings).
-// PATCH updates title / slug / status (status validated ∈ draft|review|published).
+// NoteForge — GET/PATCH/DELETE /api/documents/:id (§8 + lifecycle)
+// GET    — full document + latest version (parsed model + warnings).
+// PATCH  — update title / slug / status (status validated ∈ draft|review|published).
+// DELETE — permanently delete the document + all its versions (cascade).
 
 import { NextResponse } from 'next/server'
 import {
   getDocumentWithLatest,
   updateDocumentMeta,
+  deleteDocument,
+  getDocumentStats,
   StatusValidationError,
+  DocumentNotFoundError,
 } from '@/lib/server/storage'
 
 export const runtime = 'nodejs'
 
 export async function GET(
-  _req: Request,
+  req: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
   const { id } = await ctx.params
+  const url = new URL(req.url)
+  const includeStats = url.searchParams.get('stats') === '1'
   const doc = await getDocumentWithLatest(id)
   if (!doc) {
     return NextResponse.json({ error: 'Document not found' }, { status: 404 })
+  }
+  if (includeStats) {
+    const stats = await getDocumentStats(id)
+    return NextResponse.json({ ...doc, stats })
   }
   return NextResponse.json(doc)
 }
@@ -70,6 +80,23 @@ export async function PATCH(
         { error: `Invalid status: ${err.value}. Must be one of draft|review|published.` },
         { status: 400 },
       )
+    }
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
+}
+
+export async function DELETE(
+  _req: Request,
+  ctx: { params: Promise<{ id: string }> },
+) {
+  const { id } = await ctx.params
+  try {
+    await deleteDocument(id)
+    return NextResponse.json({ ok: true, id })
+  } catch (err) {
+    if (err instanceof DocumentNotFoundError) {
+      return NextResponse.json({ error: 'Document not found' }, { status: 404 })
     }
     const message = err instanceof Error ? err.message : 'Unknown error'
     return NextResponse.json({ error: message }, { status: 500 })

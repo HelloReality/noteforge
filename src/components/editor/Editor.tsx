@@ -104,6 +104,27 @@ export function Editor({ documentId, title, slug, status, versionNumber, model }
     }
   }
 
+  const handleUnpublish = async () => {
+    setPublishing(true)
+    try {
+      const res = await fetch(`/api/documents/${documentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'review' }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Unpublish failed')
+      const { toast } = await import('sonner')
+      toast.success('Unpublished', { description: 'Back to review status' })
+      router.refresh()
+    } catch (e: any) {
+      const { toast } = await import('sonner')
+      toast.error(e?.message || 'Unpublish failed')
+    } finally {
+      setPublishing(false)
+    }
+  }
+
   if (!doc) {
     return (
       <div className="flex flex-1 items-center justify-center text-stone-400">
@@ -125,6 +146,7 @@ export function Editor({ documentId, title, slug, status, versionNumber, model }
         publishing={publishing}
         onSave={handleSave}
         onPublish={handlePublish}
+        onUnpublish={handleUnpublish}
         leftOpen={leftOpen}
         rightOpen={rightOpen}
         onToggleLeft={() => setLeftOpen((v) => !v)}

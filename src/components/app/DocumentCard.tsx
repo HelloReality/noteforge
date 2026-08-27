@@ -1,11 +1,15 @@
-// NoteForge — document card for the library grid.
+// NoteForge — document card for the library grid (with stats + actions).
+'use client'
+
 import Link from 'next/link'
-import type { DocumentListRow } from '@/lib/server/storage'
+import { DocumentActions } from './DocumentActions'
+import type { DocumentListRow, DocumentStats } from '@/lib/server/storage'
 import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
 import {
   Pencil, History, Eye, Globe, AlertTriangle, Clock, FileText,
+  Layers, Hash, Spline, Table as TableIcon,
 } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 
 const STATUS_STYLE: Record<string, string> = {
   draft: 'bg-stone-100 text-stone-600 border-stone-300',
@@ -13,33 +17,57 @@ const STATUS_STYLE: Record<string, string> = {
   published: 'bg-emerald-100 text-emerald-800 border-emerald-300',
 }
 
-export function DocumentCard({ doc, published }: { doc: DocumentListRow; published: boolean }) {
+export function DocumentCard({ doc, stats, published }: {
+  doc: DocumentListRow
+  stats?: DocumentStats | null
+  published: boolean
+}) {
   const updated = new Date(doc.updatedAt)
   return (
-    <div className="group flex flex-col rounded-xl border border-stone-200 bg-white p-5 shadow-sm transition hover:border-amber-300 hover:shadow-md">
-      <div className="flex items-start justify-between gap-2">
-        <Link
-          href={`/documents/${doc.id}/edit`}
-          className="line-clamp-2 flex-1 text-base font-semibold leading-snug text-stone-900 hover:text-amber-700"
-          title={doc.title}
-        >
-          {doc.title}
-        </Link>
-        <Badge variant="outline" className={cn('shrink-0 border', STATUS_STYLE[doc.status] ?? STATUS_STYLE.draft)}>
-          {doc.status}
-        </Badge>
+    <div className="group relative flex h-full flex-col rounded-xl border border-stone-200 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md">
+      {/* status strip */}
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <Link
+            href={`/documents/${doc.id}/edit`}
+            className="line-clamp-2 text-base font-semibold leading-snug text-stone-900 transition hover:text-amber-700"
+            title={doc.title}
+          >
+            {doc.title}
+          </Link>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <Badge variant="outline" className={cn('border', STATUS_STYLE[doc.status] ?? STATUS_STYLE.draft)}>
+            {doc.status}
+          </Badge>
+          <DocumentActions documentId={doc.id} title={doc.title} />
+        </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-500">
-        <span className="inline-flex items-center gap-1">
-          <FileText className="h-3.5 w-3.5" /> v{doc.latestVersionNumber ?? 0} · {doc.versionCount} save{doc.versionCount === 1 ? '' : 's'}
+      {/* meta row */}
+      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-500">
+        <span className="inline-flex items-center gap-1" title="Version + save count">
+          <FileText className="h-3.5 w-3.5 text-stone-400" />
+          v{doc.latestVersionNumber ?? 0} · {doc.versionCount} save{doc.versionCount === 1 ? '' : 's'}
         </span>
         <span className="inline-flex items-center gap-1" title={updated.toLocaleString()}>
-          <Clock className="h-3.5 w-3.5" /> {formatRelative(updated)}
+          <Clock className="h-3.5 w-3.5 text-stone-400" />
+          {formatRelative(updated)}
         </span>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2 text-sm">
+      {/* stats row */}
+      {stats && (
+        <div className="mb-4 grid grid-cols-4 gap-2 rounded-lg bg-stone-50 p-2.5 text-center">
+          <Stat icon={<Layers className="h-3.5 w-3.5" />} value={stats.pages} label="pages" />
+          <Stat icon={<Hash className="h-3.5 w-3.5" />} value={stats.blocks} label="blocks" />
+          <Stat icon={<Spline className="h-3.5 w-3.5" />} value={stats.diagrams} label="diag" />
+          <Stat icon={<TableIcon className="h-3.5 w-3.5" />} value={stats.tables} label="tbl" />
+        </div>
+      )}
+
+      {/* actions row — pushed to bottom via mt-auto for consistent card height */}
+      <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-stone-100 pt-3 text-sm">
         <Link
           href={`/documents/${doc.id}/edit`}
           className="inline-flex items-center gap-1.5 rounded-md bg-stone-900 px-2.5 py-1.5 text-xs font-medium text-white transition hover:bg-stone-700"
@@ -71,6 +99,16 @@ export function DocumentCard({ doc, published }: { doc: DocumentListRow; publish
           </span>
         )}
       </div>
+    </div>
+  )
+}
+
+function Stat({ icon, value, label }: { icon: React.ReactNode; value: number; label: string }) {
+  return (
+    <div className="flex flex-col items-center">
+      <div className="flex items-center gap-1 text-stone-400">{icon}</div>
+      <div className="mt-0.5 text-sm font-semibold leading-none text-stone-700">{value}</div>
+      <div className="mt-0.5 text-[10px] uppercase tracking-wide text-stone-400">{label}</div>
     </div>
   )
 }
