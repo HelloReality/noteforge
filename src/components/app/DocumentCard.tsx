@@ -40,7 +40,7 @@ export function DocumentCard({ doc, stats, published }: {
           <Badge variant="outline" className={cn('border', STATUS_STYLE[doc.status] ?? STATUS_STYLE.draft)}>
             {doc.status}
           </Badge>
-          <DocumentActions documentId={doc.id} title={doc.title} />
+          <DocumentActions documentId={doc.id} title={doc.title} slug={doc.slug} published={published} />
         </div>
       </div>
 

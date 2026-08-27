@@ -1,9 +1,9 @@
 // NoteForge — document actions menu (duplicate / export / delete).
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { MoreVertical, Copy, Download, Trash2, Loader2 } from 'lucide-react'
+import { MoreVertical, Copy, Download, Trash2, Loader2, Share2, Link2 } from 'lucide-react'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -17,14 +17,26 @@ import { toast } from 'sonner'
 export interface DocumentActionsProps {
   documentId: string
   title: string
-  compact?: boolean
+  slug?: string
+  published?: boolean
 }
 
-export function DocumentActions({ documentId, title, compact }: DocumentActionsProps) {
+export function DocumentActions({ documentId, title, slug, published }: DocumentActionsProps) {
   const router = useRouter()
   const [duplicating, setDuplicating] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+
+  const handleCopyLink = async () => {
+    const url = `${window.location.origin}/notes/${slug}`
+    try {
+      await navigator.clipboard.writeText(url)
+      toast.success('Public URL copied', { description: url })
+    } catch {
+      // fallback: select-and-prompt
+      window.prompt('Copy this URL:', url)
+    }
+  }
 
   const handleDuplicate = async () => {
     setDuplicating(true)
@@ -73,13 +85,24 @@ export function DocumentActions({ documentId, title, compact }: DocumentActionsP
         >
           {duplicating || deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreVertical className="h-4 w-4" />}
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuItem onClick={handleDuplicate} disabled={duplicating}>
             <Copy className="mr-2 h-4 w-4" /> Duplicate
           </DropdownMenuItem>
           <DropdownMenuItem onClick={handleExport}>
             <Download className="mr-2 h-4 w-4" /> Export .note.html
           </DropdownMenuItem>
+          {published && slug && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleCopyLink}>
+                <Link2 className="mr-2 h-4 w-4" /> Copy public URL
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => window.open(`/notes/${slug}`, '_blank')}>
+                <Share2 className="mr-2 h-4 w-4" /> View public page
+              </DropdownMenuItem>
+            </>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={() => setConfirmDelete(true)}

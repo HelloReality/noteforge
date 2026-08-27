@@ -1,15 +1,18 @@
 // NoteForge — Editor (§12): block-based editor with undo/redo, live preview, inspector.
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useEditorStore, emptyBlock, type BlockPath } from '@/lib/store/editor-store'
+import { useEditorKeyboardShortcuts } from '@/lib/store/use-keyboard-shortcuts'
 import type { Block, NoteDocument } from '@/lib/note-format/types'
 import { NoteRenderer } from '@/components/renderer'
 import { EditorToolbar } from './EditorToolbar'
 import { Outline } from './Outline'
 import { Inspector } from './Inspector'
+import { KeyboardShortcutsDialog } from '@/components/app/KeyboardShortcutsDialog'
+import { DocumentSettingsDialog } from '@/components/app/DocumentSettingsDialog'
 import { Loader2, PanelLeftClose, PanelLeft, PanelRightClose, PanelRight, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -35,6 +38,9 @@ export function Editor({ documentId, title, slug, status, versionNumber, model }
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [savedNote, setSavedNote] = useState('')
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const titleRef = useRef<HTMLInputElement>(null)
 
   // initialise the store once on mount
   useEffect(() => { load(model) }, [])
@@ -72,6 +78,33 @@ export function Editor({ documentId, title, slug, status, versionNumber, model }
       setSaving(false)
     }
   }
+
+  const handleExport = () => {
+    window.location.href = `/api/documents/${documentId}/export`
+    import('sonner').then(({ toast }) => toast.success('Downloading .note.html'))
+  }
+
+  // keyboard shortcuts
+  useEditorKeyboardShortcuts({
+    onSave: handleSave,
+    onExport: handleExport,
+    canSave: dirty && !saving,
+    titleRef,
+  })
+
+  // "?" key opens shortcuts dialog (without modifier)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const target = e.target as HTMLElement
+        if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return
+        e.preventDefault()
+        setShortcutsOpen(true)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   const handlePublish = async () => {
     if (!doc) return
@@ -147,10 +180,21 @@ export function Editor({ documentId, title, slug, status, versionNumber, model }
         onSave={handleSave}
         onPublish={handlePublish}
         onUnpublish={handleUnpublish}
+        onShowShortcuts={() => setShortcutsOpen(true)}
+        onShowSettings={() => setSettingsOpen(true)}
+        titleRef={titleRef}
         leftOpen={leftOpen}
         rightOpen={rightOpen}
         onToggleLeft={() => setLeftOpen((v) => !v)}
         onToggleRight={() => setRightOpen((v) => !v)}
+      />
+      <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+      <DocumentSettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        documentId={documentId}
+        title={doc.title}
+        slug={slug}
       />
 
       <div className="grid flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[260px_1fr_320px]">

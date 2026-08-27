@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import {
   Undo2, Redo2, Save, Rocket, ChevronLeft, PanelLeft, PanelLeftClose, PanelRight, PanelRightClose, Circle,
-  Download, MoreVertical, Globe, GlobeLock, ExternalLink,
+  Download, MoreVertical, Globe, GlobeLock, ExternalLink, Keyboard, Settings,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -29,14 +29,17 @@ export interface EditorToolbarProps {
   onSave: () => void
   onPublish: () => void
   onUnpublish: () => void
+  onShowShortcuts: () => void
+  onShowSettings: () => void
   leftOpen: boolean
   rightOpen: boolean
   onToggleLeft: () => void
   onToggleRight: () => void
+  titleRef?: React.RefObject<HTMLInputElement | null>
 }
 
 export function EditorToolbar(props: EditorToolbarProps) {
-  const { documentId, slug, status, versionNumber, dirty, saving, publishing, onSave, onPublish, onUnpublish, title } = props
+  const { documentId, slug, status, versionNumber, dirty, saving, publishing, onSave, onPublish, onUnpublish, onShowShortcuts, onShowSettings, title, titleRef } = props
   const isPublished = status === 'published'
   const doc = useEditorStore((s) => s.doc)
   const currentPage = useEditorStore((s) => s.currentPage)
@@ -74,6 +77,7 @@ export function EditorToolbar(props: EditorToolbarProps) {
         </div>
 
         <Input
+          ref={titleRef ?? undefined}
           value={doc?.title ?? title}
           onChange={(e) => updateDocMeta({ title: e.target.value })}
           className="h-9 max-w-xs flex-1 border-transparent bg-transparent font-semibold text-stone-900 hover:border-stone-200 focus-visible:border-stone-300 focus-visible:bg-white"
@@ -184,8 +188,25 @@ export function EditorToolbar(props: EditorToolbarProps) {
                   <Globe className="mr-2 h-4 w-4" /> Publish
                 </DropdownMenuItem>
               )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onShowShortcuts}>
+                <Keyboard className="mr-2 h-4 w-4" /> Keyboard shortcuts
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onShowSettings}>
+                <Settings className="mr-2 h-4 w-4" /> Document settings…
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onShowShortcuts}
+            className="hidden h-8 w-8 p-0"
+            title="Keyboard shortcuts (?)"
+            aria-label="Keyboard shortcuts"
+          >
+            <Keyboard className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 

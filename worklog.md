@@ -223,3 +223,77 @@ Priority recommendations for next phase:
 4. Add a document settings dialog (edit slug, delete from within editor).
 5. Add syntax highlighting for code blocks (react-syntax-highlighter is already installed).
 6. Scaffold the formal vitest test suites (security.spec.ts, parse.fixtures.spec.ts, roundtrip.spec.ts) per Appendix A.4.
+
+---
+Task ID: 5 (webDevReview cron — round 2)
+Agent: main (orchestrator)
+Task: QA assessment + keyboard shortcuts + syntax highlighting + share/settings dialogs
+
+Work Log:
+- Read full worklog to assess project status. Phase-1 NoteForge + round-1 enhancements (document lifecycle, search/filter/sort, export, restore) were all complete and verified.
+- Performed QA with agent-browser: all 6 routes returned 200, zero console errors, zero page errors. VLM confirmed clean design.
+- Selected work focus from round-1 recommendations: keyboard shortcuts (#1), syntax highlighting (#5), share/settings dialogs (#3/#4).
+
+New features built this round:
+
+1. Keyboard shortcuts (src/lib/store/use-keyboard-shortcuts.ts):
+   - Created `useEditorKeyboardShortcuts` hook binding: Ctrl+Z (undo), Ctrl+Shift+Z/Ctrl+Y (redo), Ctrl+S (save), Ctrl+E (export), Ctrl+K (focus title).
+   - Prevents default browser behavior for these combos while the editor is mounted.
+   - Wired into Editor.tsx with titleRef for the Ctrl+K focus action.
+   - "?" key (without modifier) opens the keyboard shortcuts help dialog.
+
+2. Keyboard shortcuts help dialog (src/components/app/KeyboardShortcutsDialog.tsx):
+   - Dialog component listing all shortcuts with pill-shaped kbd badges.
+   - Accessible via "?" key, toolbar "?" button, or "Keyboard shortcuts" menu item.
+   - VLM analysis: "clean and well-structured", keys displayed "very clearly" in pill badges.
+
+3. Syntax highlighting for code blocks (src/components/diagrams/CodeHighlight.tsx):
+   - Client component using react-syntax-highlighter (Prism) with one-dark theme.
+   - Uses `useSyncExternalStore` for SSR-safe client detection (avoids set-state-in-effect lint rule).
+   - Renders plain <code> during SSR (matches A.2 DOM contract), upgrades to highlighted code after hydration.
+   - Integrated into CodeBlock renderer: when `block.language` is present, uses CodeHighlight; otherwise plain <code>.
+   - VLM analysis: SQL keywords (SELECT/FROM/WHERE) in purple/pink, strings in green, comments distinct colors. "Very professional."
+
+4. Copy public URL share action (DocumentActions.tsx):
+   - Added "Copy public URL" menu item for published documents (uses navigator.clipboard.writeText with prompt fallback).
+   - Added "View public page" menu item (opens /notes/[slug] in new tab).
+   - DocumentCard now passes slug + published to DocumentActions.
+   - Verified in browser: menu shows Duplicate, Export, Copy public URL, View public page, Delete.
+
+5. Document settings dialog (src/components/app/DocumentSettingsDialog.tsx):
+   - Controlled dialog (open/onOpenChange) for editing the public URL slug.
+   - Shows live URL preview (/notes/[slug]) with inline input.
+   - Validates + normalizes slug (lowercase, hyphens only), PATCHes via API, router.refresh().
+   - Added "Document settings…" menu item to the editor's More actions dropdown.
+   - Wired into Editor.tsx with settingsOpen state.
+
+Editor toolbar enhancements:
+- Added Keyboard icon button (hidden on mobile) that opens the shortcuts dialog.
+- Added "Keyboard shortcuts" and "Document settings…" items to the More actions dropdown menu.
+- Added titleRef prop to forward the ref to the title input (for Ctrl+K focus).
+- Added onShowShortcuts + onShowSettings callback props.
+
+Stage Summary (verification results):
+- `bun run lint`: 0 errors, 0 warnings.
+- `bunx tsc --noEmit`: 0 errors in any new/modified file.
+- agent-browser QA:
+  - Home page document actions menu shows all 5 items (Duplicate, Export, Copy public URL, View public page, Delete) for published docs.
+  - Editor toolbar has keyboard button + More actions menu with Export, Unpublish, Keyboard shortcuts, Document settings.
+  - "?" key opens the shortcuts dialog (confirmed: dialog role present).
+  - Code highlighting: SQL code block in full fixture has 42 syntax-highlighted Prism spans (keywords, strings, comments all color-coded).
+  - Zero console errors on any route.
+- VLM screenshot analysis: shortcuts dialog "clean and well-structured", code highlighting "very professional" with proper color coding.
+
+Unresolved issues / risks:
+- The sandbox still kills background processes between Bash tool calls — had to restart dev server multiple times.
+- The `react-hooks/set-state-in-effect` lint rule (new in React 19/Next.js 16) required using `useSyncExternalStore` instead of the traditional `useState(false) + useEffect` mount-detection pattern.
+- Direct-canvas block selection in edit mode is still a Phase-2 enhancement.
+- Formal vitest/playwright test suites (A.4) are still not scaffolded.
+
+Priority recommendations for next phase:
+1. Add block-level drag-and-drop reordering in the editor outline (using @dnd-kit, already installed).
+2. Add a "duplicate block" action in the outline.
+3. Add a full-text search across all document content (not just titles).
+4. Add a print/PDF export option for the public viewer.
+5. Add a reading-progress indicator on the public viewer.
+6. Scaffold the formal vitest test suites (security.spec.ts, parse.fixtures.spec.ts, roundtrip.spec.ts) per Appendix A.4.
