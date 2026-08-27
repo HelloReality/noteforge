@@ -820,3 +820,72 @@ Priority recommendations for next phase:
 4. Add a "save as template" feature (let users save their own documents as reusable templates).
 5. Add tags/collections for organizing documents beyond favorites.
 6. Scaffold the formal vitest test suites (security.spec.ts, parse.fixtures.spec.ts, roundtrip.spec.ts) per Appendix A.4.
+
+---
+Task ID: 13 (webDevReview cron — round 10)
+Agent: main (orchestrator)
+Task: QA assessment + batch operations + tags/collections
+
+Work Log:
+- Read full worklog to assess project status. Phase-1 + rounds 1-9 (lifecycle/search/shortcuts/syntax highlighting/settings/DnD/duplicate/reading progress/print/TOC/recently edited/full-text search/Markdown export/preview-mode toggle/share dialog/context menu/search keyboard nav/fullscreen preview/version comparison/dark mode/recently viewed/block filter/favorites/library stats/dark hero/templates) all complete and verified.
+- Performed QA: all 9 routes returned 200, zero console errors, zero page errors. Lint clean. App stable.
+- Selected work focus from round-9 recommendations: batch operations (#3), tags/collections (#5).
+
+New features built this round:
+
+1. Batch operations mode (select multiple docs, bulk publish/unpublish/delete):
+   - Backend: Added `batchUpdateStatus(ids, status)` and `batchDeleteDocuments(ids)` to src/lib/server/storage.ts — both return BatchResult { successful: string[], failed: {id, error}[] }.
+   - API: Created POST /api/documents/batch — accepts { action: 'updateStatus'|'delete', ids: string[], status?: string }. Returns 200 with BatchResult, 400 on invalid input, 500 on error.
+   - Verified via curl: batchUpdateStatus returned {"successful":["cmtbzkp090000pbo59lc4na3t"],"failed":[]}.
+   - Created src/components/app/BatchToolbar.tsx — appears when ≥1 document is selected:
+     - Shows "{n} selected" count.
+     - Publish button (emerald), Unpublish button (stone), Delete button (rose) with AlertDialog confirmation.
+     - "Select all" link, "Clear" (X) button.
+     - Loading state (spinner) during operations; toast notifications on success/failure.
+   - Updated src/components/app/DocumentCard.tsx — added selection checkbox (top-left corner, appears on hover, fills amber when selected; selected card gets amber ring-2 border).
+   - Updated src/components/app/LibraryClient.tsx — added selectedIds Set state, handleSelect/handleSelectAll/handleClear handlers, renders BatchToolbar above the LibraryToolbar.
+   - VLM confirmed: "batch toolbar showing '1 selected' with Publish/Unpublish/Delete buttons; selected card highlighted with amber border; checkbox in top-left corner, checked with amber color."
+
+2. Tags/collections feature (localStorage-backed):
+   - Created src/components/app/Tags.tsx:
+     - useTags() hook using useSyncExternalStore (subscribes to storage events + custom 'noteforge:tags-changed' event).
+     - readTagMap(), writeTagMap() localStorage helpers (key: noteforge:tags, Record<documentId, string[]>).
+     - getTags(id), addTag(id, tag), removeTag(id, tag), allTags (unique sorted list across all docs).
+     - Tag normalization: lowercase, hyphens only, non-alphanumeric replaced.
+     - DocumentTags component — renders tag badges (pill-shaped with Tag icon + remove X on hover); shows up to 3 tags + "+N" overflow.
+     - TagAdder component — small dashed "+ tag" button that reveals an inline input; Enter to submit, Escape to cancel; normalizes tag on submit.
+   - Updated src/components/app/DocumentCard.tsx — added a "tags row" between the meta row and the stats row, containing DocumentTags + TagAdder.
+   - Dark mode support on all tag badges and inputs.
+   - Verified: 3 tag adder buttons found; clicked adder, typed "security", pressed Enter; tag "security" appears in DOM (confirmed via innerText check).
+   - VLM confirmed: "+ tag button on each document card" (the tag badges weren't visible in the screenshot because they're small and the tag was just added, but the + tag button is confirmed present on all cards).
+
+Styling polish:
+- Selected card: amber border + ring-2 ring-amber-300.
+- Selection checkbox: amber fill when checked, appears on hover (opacity-0 → group-hover:opacity-100).
+- Batch toolbar: amber-50 background with amber-300 border, action buttons color-coded (emerald/stone/rose).
+- Tag badges: stone-100 pill with Tag icon, remove X on hover.
+- Tag adder: dashed border, amber hover state.
+- Dark mode support throughout.
+
+Stage Summary (verification results):
+- `bun run lint`: 0 errors, 0 warnings.
+- `bunx tsc --noEmit`: 0 errors in any new/modified file.
+- All 9 routes return 200.
+- Batch API verified: POST /api/documents/batch with updateStatus returns {"successful":[...],"failed":[]}.
+- agent-browser QA: 3 checkboxes on cards, clicking selects + shows batch toolbar, batch toolbar shows "1 selected" with Publish/Unpublish/Delete; 3 tag adders found, tag "security" added successfully.
+- VLM screenshot analysis: "batch toolbar '1 selected' with Publish/Unpublish/Delete; selected card amber border; checkbox top-left checked amber; '+ tag' button on each card."
+- Zero console errors on any route.
+
+Unresolved issues / risks:
+- The sandbox continues to kill background processes between Bash tool calls — required multiple restarts.
+- Tags are localStorage-only (per-browser); a future enhancement could persist them server-side.
+- Direct-canvas block selection in edit mode is still a Phase-2 enhancement.
+- Formal vitest/playwright test suites (A.4) are still not scaffolded.
+
+Priority recommendations for next phase:
+1. Add inline rich-text editing (click a heading/paragraph in the preview to edit it directly).
+2. Add a character-level content diff in the version comparison.
+3. Add a "save as template" feature (let users save their own documents as reusable templates).
+4. Add tag filtering to the library toolbar (filter by tag chip).
+5. Add a document activity timeline (who edited what, when).
+6. Scaffold the formal vitest test suites (security.spec.ts, parse.fixtures.spec.ts, roundtrip.spec.ts) per Appendix A.4.

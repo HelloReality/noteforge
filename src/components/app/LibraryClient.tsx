@@ -1,10 +1,11 @@
-// NoteForge — library client: search/filter/sort + grid + favorites filter.
+// NoteForge — library client: search/filter/sort + grid + favorites + batch selection.
 'use client'
 
 import { useState, useMemo } from 'react'
 import { AppEmptyState } from './AppEmptyState'
 import { LibraryToolbar, type SortKey, type StatusFilter } from './LibraryToolbar'
 import { useFavorites } from './Favorites'
+import { BatchToolbar } from './BatchToolbar'
 import type { DocumentListRow, DocumentStats } from '@/lib/server/storage'
 
 export interface LibraryDoc extends DocumentListRow {
@@ -16,6 +17,7 @@ export function LibraryClient({ docs, publishedSlugs }: { docs: LibraryDoc[]; pu
   const [sort, setSort] = useState<SortKey>('updated')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [favoritesOnly, setFavoritesOnly] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const { ids: favoriteIds } = useFavorites()
 
   const filtered = useMemo(() => {
@@ -27,7 +29,6 @@ export function LibraryClient({ docs, publishedSlugs }: { docs: LibraryDoc[]; pu
       return d.title.toLowerCase().includes(q) || d.slug.toLowerCase().includes(q)
     })
     out = [...out].sort((a, b) => {
-      // Favorites always sort to top when not explicitly sorting by title
       if (sort === 'updated') {
         const aFav = favoriteIds.has(a.id) ? 1 : 0
         const bFav = favoriteIds.has(b.id) ? 1 : 0
@@ -42,8 +43,34 @@ export function LibraryClient({ docs, publishedSlugs }: { docs: LibraryDoc[]; pu
 
   const publishedSet = useMemo(() => new Set(publishedSlugs), [publishedSlugs])
 
+  const handleSelect = (id: string, selected: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (selected) next.add(id)
+      else next.delete(id)
+      return next
+    })
+  }
+
+  const handleSelectAll = () => {
+    setSelectedIds(new Set(filtered.map((d) => d.id)))
+  }
+
+  const handleClear = () => {
+    setSelectedIds(new Set())
+  }
+
+  const selectedArray = Array.from(selectedIds)
+
   return (
     <>
+      <BatchToolbar
+        selectedIds={selectedArray}
+        selectedCount={selectedArray.length}
+        totalCount={filtered.length}
+        onSelectAll={handleSelectAll}
+        onClear={handleClear}
+      />
       <LibraryToolbar
         query={query}
         onQueryChange={setQuery}
@@ -79,6 +106,8 @@ export function LibraryClient({ docs, publishedSlugs }: { docs: LibraryDoc[]; pu
               doc={d}
               stats={d.stats}
               published={publishedSet.has(d.slug)}
+              selected={selectedIds.has(d.id)}
+              onSelect={handleSelect}
             />
           ))}
         </div>
@@ -89,6 +118,12 @@ export function LibraryClient({ docs, publishedSlugs }: { docs: LibraryDoc[]; pu
 
 // Re-export the card as a client component wrapper (avoids circular import issues).
 import { DocumentCard } from './DocumentCard'
-function DocumentCardClient(props: { doc: LibraryDoc; stats?: DocumentStats | null; published: boolean }) {
+function DocumentCardClient(props: {
+  doc: LibraryDoc
+  stats?: DocumentStats | null
+  published: boolean
+  selected: boolean
+  onSelect: (id: string, selected: boolean) => void
+}) {
   return <DocumentCard {...props} />
 }

@@ -629,3 +629,44 @@ export async function getLibraryStats(): Promise<LibraryStats> {
   }
   return { documents: docs.length, versions, pages, blocks, words, diagrams, tables, questions }
 }
+
+// ── Batch operations ─────────────────────────────────────────────────────────
+
+export interface BatchResult {
+  successful: string[]
+  failed: { id: string; error: string }[]
+}
+
+/** Bulk update status for multiple documents. */
+export async function batchUpdateStatus(ids: string[], status: string): Promise<BatchResult> {
+  if (!['draft', 'review', 'published'].includes(status)) {
+    throw new StatusValidationError(status)
+  }
+  const successful: string[] = []
+  const failed: { id: string; error: string }[] = []
+  for (const id of ids) {
+    try {
+      const updated = await updateDocumentMeta(id, { status })
+      if (updated) successful.push(id)
+      else failed.push({ id, error: 'Not found' })
+    } catch (e) {
+      failed.push({ id, error: e instanceof Error ? e.message : 'Unknown error' })
+    }
+  }
+  return { successful, failed }
+}
+
+/** Bulk delete multiple documents. */
+export async function batchDeleteDocuments(ids: string[]): Promise<BatchResult> {
+  const successful: string[] = []
+  const failed: { id: string; error: string }[] = []
+  for (const id of ids) {
+    try {
+      await deleteDocument(id)
+      successful.push(id)
+    } catch (e) {
+      failed.push({ id, error: e instanceof Error ? e.message : 'Unknown error' })
+    }
+  }
+  return { successful, failed }
+}

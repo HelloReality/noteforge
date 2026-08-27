@@ -4,6 +4,7 @@
 import Link from 'next/link'
 import { DocumentActions } from './DocumentActions'
 import { FavoriteStar } from './Favorites'
+import { DocumentTags, TagAdder } from './Tags'
 import type { DocumentListRow, DocumentStats } from '@/lib/server/storage'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -18,20 +19,42 @@ const STATUS_STYLE: Record<string, string> = {
   published: 'bg-emerald-100 text-emerald-800 border-emerald-300',
 }
 
-export function DocumentCard({ doc, stats, published }: {
+export function DocumentCard({ doc, stats, published, selected, onSelect }: {
   doc: DocumentListRow
   stats?: DocumentStats | null
   published: boolean
+  selected?: boolean
+  onSelect?: (id: string, selected: boolean) => void
 }) {
   const updated = new Date(doc.updatedAt)
   return (
-    <div className="group relative flex h-full flex-col rounded-xl border border-stone-200 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md">
+    <div className={cn(
+      'group relative flex h-full flex-col rounded-xl border bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-stone-900',
+      selected
+        ? 'border-amber-400 ring-2 ring-amber-300'
+        : 'border-stone-200 hover:border-amber-300 dark:border-stone-700 dark:hover:border-amber-700',
+    )}>
+      {/* selection checkbox */}
+      {onSelect && (
+        <button
+          onClick={() => onSelect(doc.id, !selected)}
+          className={cn(
+            'absolute left-3 top-3 flex h-5 w-5 items-center justify-center rounded border-2 transition',
+            selected
+              ? 'border-amber-500 bg-amber-500 text-white'
+              : 'border-stone-300 bg-white opacity-0 hover:border-amber-400 group-hover:opacity-100 dark:border-stone-600 dark:bg-stone-800',
+          )}
+          aria-label={selected ? 'Deselect' : 'Select'}
+        >
+          {selected && <span className="text-xs font-bold">✓</span>}
+        </button>
+      )}
       {/* status strip */}
-      <div className="mb-3 flex items-start justify-between gap-2">
+      <div className={cn('mb-3 flex items-start justify-between gap-2', onSelect && 'pl-7')}>
         <div className="flex min-w-0 flex-1 flex-col">
           <Link
             href={`/documents/${doc.id}/edit`}
-            className="line-clamp-2 text-base font-semibold leading-snug text-stone-900 transition hover:text-amber-700"
+            className="line-clamp-2 text-base font-semibold leading-snug text-stone-900 transition hover:text-amber-700 dark:text-stone-100"
             title={doc.title}
           >
             {doc.title}
@@ -56,6 +79,12 @@ export function DocumentCard({ doc, stats, published }: {
           <Clock className="h-3.5 w-3.5 text-stone-400" />
           {formatRelative(updated)}
         </span>
+      </div>
+
+      {/* tags row */}
+      <div className="mb-3 flex flex-wrap items-center gap-1">
+        <DocumentTags documentId={doc.id} />
+        <TagAdder documentId={doc.id} />
       </div>
 
       {/* stats row */}
