@@ -1206,3 +1206,53 @@ Stage Summary:
   2. Plain HTML (no <note-document>) — auto-converted with a warning
 - Users can import existing HTML study notes without manually converting them.
 - The /import page will work with any HTML file.
+
+---
+Task ID: 36 (Editor Canvas Coordinate System Fix)
+Agent: main (orchestrator)
+Task: Fix the editor rendering layout — page clipping, horizontal overflow, coordinate-system mismatch
+
+Work Log:
+- Root cause: NoteRenderer had `max-w-[1100px] + mx-auto` which constrained the page width. When the editor viewport (after 260px outline + 320px inspector = 580px of sidebars) was narrower than the page (e.g. 1024px), the flex container shrank and the page overflowed horizontally, causing clipping + scrollbars.
+- globals.css had `overflow-x: auto` on `.noteforge-pages` which created a competing scroll container inside the already-scrolling editor viewport.
+- The editor rendered ALL pages stacked vertically, not the current page as a fixed-size artboard.
+
+Fix:
+1. NoteRenderer (src/components/renderer/NoteRenderer.tsx):
+   - Removed `max-w-[1100px] mx-auto my-8` → now just `flex flex-col items-center gap-8 py-8`
+   - Pages are centered naturally, no artificial width constraint
+2. globals.css:
+   - Removed `overflow-x: auto` from `.noteforge-pages` → no competing scroll container
+3. New CanvasViewport component (src/components/editor/CanvasViewport.tsx):
+   - Measures the available viewport via ResizeObserver
+   - Calculates fit scale = min(availW/pageW, availH/pageH) with 48px padding
+   - Applies `transform: scale(scale)` with `transform-origin: top left`
+   - Stage wrapper sized to `pageWidth*scale × pageHeight*scale` for correct scroll area
+   - Page wrapper at exact document dimensions (never modified by zoom)
+   - Zoom modes: 'fit' | 0.5 | 0.75 | 1 | 1.25 | 1.5 | 2
+   - Page is centered both horizontally and vertically in the viewport
+4. Editor (src/components/editor/Editor.tsx):
+   - Renders ONLY the current page (not all pages) in the CanvasViewport
+   - Creates a singlePageDoc with just the current page for the renderer
+   - Added zoom controls: ZoomIn/ZoomOut buttons, zoom dropdown (Fit/50%/75%/100%/125%/150%/200%), Fit button
+   - Added `min-h-0` to the canvas section so it can shrink below content size
+   - Tracks `currentScale` for the zoom percentage display
+
+Architecture:
+  CanvasViewport (overflow: auto, measures available space)
+    └── Centering flex container (min-h-full min-w-full, items-center justify-center)
+        └── Stage (width: pageW*scale, height: pageH*scale, position: relative)
+            └── PageWrapper (transform: scale(scale), origin: top left, width: pageW, height: pageH)
+                └── NoteRenderer (renders the current page at exact document dimensions)
+
+The page ALWAYS uses its real document dimensions. Only the visual scale changes.
+Zoom changes the viewport scale, NOT element x/y/w/h. Document coordinates are
+never modified by zoom.
+
+Stage Summary:
+- `bun run lint`: 0 errors, 0 warnings.
+- Committed + pushed: c063626 — fix: editor canvas coordinate system
+- The page is now a fixed-size artboard that scales to fit the editor viewport.
+- No more horizontal clipping, no competing scroll containers, no reflow.
+- Zoom controls let the user zoom in/out and fit to page.
+- The same NoteRenderer is used for edit/preview/public — visual parity guaranteed.
