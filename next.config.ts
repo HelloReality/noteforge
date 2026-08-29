@@ -6,6 +6,12 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  eslint: {
+    // Do not run ESLint during builds — the local `bun run lint` is the
+    // source of truth for lint, and build-time lint can fail the Vercel
+    // build on warnings.
+    ignoreDuringBuilds: true,
+  },
   reactStrictMode: false,
 };
 
