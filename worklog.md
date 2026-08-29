@@ -1256,3 +1256,51 @@ Stage Summary:
 - No more horizontal clipping, no competing scroll containers, no reflow.
 - Zoom controls let the user zoom in/out and fit to page.
 - The same NoteRenderer is used for edit/preview/public — visual parity guaranteed.
+
+---
+Task ID: 37 (Raw HTML Block — Preserve Original Design)
+Agent: main (orchestrator)
+Task: Enhance the .note.html format to support arbitrary HTML (diagrams, text blocks, complex layouts) so the original design is preserved on import
+
+Work Log:
+- User's feedback: the plain-HTML conversion "lacks the original design" — complex divs (two-column grids, hand-drawn boxes with SVG borders, flow diagrams with nodes/arrows, checklists with icons) were being flattened into semantic note-* blocks, losing all visual styling.
+- Added a new <note-raw> block type that preserves arbitrary HTML content exactly as authored.
+- The HTML is sanitized on import (scripts, iframes, event handlers, dangerous CSS removed) but the visual structure (divs, grids, SVGs, inline styles, classes) is kept 1:1.
+- Updated the fallback converter: complex divs (with .grid-2, .box, .diagram, .node, .arrow, .check-item, SVG, etc.) are now preserved as raw-html blocks instead of being unwrapped.
+- Verified with the user's HTML file: 14 blocks, complex divs preserved as raw-html, original design kept.
+
+Architecture:
+  <note-raw class="...">
+    <div class="grid-2">
+      <div class="box dashed red rot-1">
+        <div class="box-title">Vulnerable Query</div>
+        <div class="code">SELECT * FROM users WHERE...</div>
+        <svg>...</svg>
+      </div>
+      ...
+    </div>
+  </note-raw>
+
+Files changed:
+1. types.ts — added RawHtmlBlock type
+2. sanitize.ts — added sanitizeRawHtml() with wide element allowlist + attr sanitization
+3. parse.ts — parse <note-raw>, fallback preserves complex divs as raw-html
+4. serialize.ts — serialize raw-html back to <note-raw>
+5. RawHtmlBlock.tsx — new renderer (dangerouslySetInnerHTML)
+6. BlockRenderer.tsx — dispatch raw-html
+7. editor-store.ts — emptyBlock('raw-html')
+8. Outline.tsx — icon/label/addable/snippet for raw-html
+9. Inspector.tsx — raw HTML textarea editor
+
+Stage Summary:
+- `bun run lint`: 0 errors, 0 warnings.
+- Committed + pushed: 2c367f9 — feat: add <note-raw> block to preserve original HTML design 1:1
+- Users can now:
+  1. Import plain HTML with complex layouts — the design is preserved
+  2. Manually wrap complex sections in <note-raw> in their .note.html
+  3. Edit raw HTML in the Inspector
+  4. The original design renders identically in edit/preview/public
+
+The .note.html format now supports BOTH:
+- Semantic note-* blocks (for structured content: title, heading, list, callout, diagram, etc.)
+- <note-raw> blocks (for arbitrary HTML: grids, boxes, SVGs, custom layouts)
