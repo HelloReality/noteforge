@@ -8,6 +8,7 @@ import { RestoreVersionButton } from '@/components/app/RestoreVersionButton'
 import { ChevronLeft, History, FileText, Eye, GitCompare, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatStableDateTime } from '@/lib/date-format'
+import { PublishVersionButton } from '@/components/app/PublishVersionButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -223,6 +224,12 @@ export default async function VersionsPage({
                       <GitCompare className="h-3.5 w-3.5" /> Compare with latest
                     </Link>
                     <RestoreVersionButton documentId={id} number={selected.number} />
+                    <PublishVersionButton documentId={id} number={selected.number} versionId={selected.id} />
+                  </div>
+                )}
+                {selected && selected.number === latestNum && (
+                  <div className="flex items-center gap-2">
+                    <PublishVersionButton documentId={id} number={selected.number} versionId={selected.id} />
                   </div>
                 )}
               </div>

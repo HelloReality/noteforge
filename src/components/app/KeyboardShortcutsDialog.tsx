@@ -14,9 +14,11 @@ export interface KeyboardShortcutsDialogProps {
 const SHORTCUTS = [
   { keys: ['Ctrl', 'Z'], label: 'Undo last change' },
   { keys: ['Ctrl', 'Shift', 'Z'], label: 'Redo (or Ctrl+Y)' },
-  { keys: ['Ctrl', 'S'], label: 'Save a new version' },
+  { keys: ['Ctrl', 'S'], label: 'Save a new version (manual)' },
   { keys: ['Ctrl', 'E'], label: 'Export as .note.html' },
   { keys: ['Ctrl', 'K'], label: 'Focus the title field' },
+  { keys: ['Del'], label: 'Delete selected block' },
+  { keys: ['↑', '↓'], label: 'Move selected block up / down' },
   { keys: ['?'], label: 'Show this dialog' },
 ] as const
 

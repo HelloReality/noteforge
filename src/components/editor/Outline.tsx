@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button'
 import {
   Plus, Trash2, ChevronUp, ChevronDown, Heading1, Pilcrow, List, HelpCircle,
   MessageSquareQuote, StickyNote, Quote, Minus, Square, Code2, Table, Image as ImageIcon,
-  Spline, Type, Layers, GripVertical, Copy, WrapText, Search, X,
+  Spline, Type, Layers, GripVertical, Copy, WrapText, Search, X, FilePlus, CopyPlus,
 } from 'lucide-react'
 import {
   ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem,
@@ -65,6 +65,9 @@ export function Outline({ currentPage }: { currentPage: number }) {
   const reorderBlock = useEditorStore((s) => s.reorderBlock)
   const duplicateBlock = useEditorStore((s) => s.duplicateBlock)
   const wrapInQuestion = useEditorStore((s) => s.wrapInQuestion)
+  const addPage = useEditorStore((s) => s.addPage)
+  const deletePage = useEditorStore((s) => s.deletePage)
+  const duplicatePage = useEditorStore((s) => s.duplicatePage)
   const [adding, setAdding] = useState(false)
   const [filter, setFilter] = useState('')
 
@@ -102,19 +105,53 @@ export function Outline({ currentPage }: { currentPage: number }) {
       </div>
 
       {doc.pages.length > 1 && (
-        <div className="flex flex-wrap gap-1 px-3 pb-2">
+        <div className="flex flex-wrap items-center gap-1 px-3 pb-2">
           {doc.pages.map((p, i) => (
-            <button
-              key={i}
-              onClick={() => setCurrentPage(i)}
-              className={cn(
-                'rounded-md px-2 py-1 text-xs font-medium transition',
-                i === currentPage ? 'bg-amber-100 text-amber-900' : 'text-stone-500 hover:bg-stone-200/60',
-              )}
-            >
-              P{p.page}
-            </button>
+            <ContextMenu key={i}>
+              <ContextMenuTrigger asChild>
+                <button
+                  onClick={() => setCurrentPage(i)}
+                  className={cn(
+                    'rounded-md px-2 py-1 text-xs font-medium transition',
+                    i === currentPage ? 'bg-amber-100 text-amber-900' : 'text-stone-500 hover:bg-stone-200/60',
+                  )}
+                >
+                  P{p.page}
+                </button>
+              </ContextMenuTrigger>
+              <ContextMenuContent className="w-48">
+                <ContextMenuLabel className="text-xs text-stone-400">Page {p.page}</ContextMenuLabel>
+                <ContextMenuSeparator />
+                <ContextMenuItem onClick={() => duplicatePage(i)}>
+                  <CopyPlus className="mr-2 h-4 w-4" /> Duplicate page
+                </ContextMenuItem>
+                {doc.pages.length > 1 && (
+                  <ContextMenuItem onClick={() => deletePage(i)} className="text-rose-600 focus:text-rose-700 focus:bg-rose-50">
+                    <Trash2 className="mr-2 h-4 w-4" /> Delete page
+                  </ContextMenuItem>
+                )}
+              </ContextMenuContent>
+            </ContextMenu>
           ))}
+          <button
+            onClick={() => addPage()}
+            title="Add a new page"
+            className="rounded-md px-1.5 py-1 text-xs text-stone-400 transition hover:bg-amber-100 hover:text-amber-700"
+          >
+            <FilePlus className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+      {doc.pages.length === 1 && (
+        <div className="flex items-center gap-1 px-3 pb-2">
+          <button
+            onClick={() => addPage()}
+            title="Add a new page"
+            className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-stone-400 transition hover:bg-amber-100 hover:text-amber-700"
+          >
+            <FilePlus className="h-3.5 w-3.5" /> Add page
+          </button>
         </div>
       )}
 

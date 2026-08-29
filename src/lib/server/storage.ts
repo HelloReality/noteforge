@@ -187,12 +187,12 @@ export async function listDocuments(): Promise<DocumentListRow[]> {
  */
 export async function updateDocumentMeta(
   id: string,
-  patch: { title?: string; slug?: string; status?: string },
+  patch: { title?: string; slug?: string; status?: string; publishedVersionId?: string },
 ): Promise<{ id: string; title: string; slug: string; status: string; updatedAt: string } | null> {
   const existing = await db.document.findUnique({ where: { id }, select: { id: true, slug: true } })
   if (!existing) return null
 
-  const data: { title?: string; slug?: string; status?: string } = {}
+  const data: { title?: string; slug?: string; status?: string; publishedVersionId?: string | null } = {}
   if (typeof patch.title === 'string' && patch.title.trim().length > 0) {
     data.title = patch.title.trim()
   }
@@ -207,6 +207,15 @@ export async function updateDocumentMeta(
       throw new StatusValidationError(patch.status)
     }
     data.status = patch.status
+    // When unpublishing (setting status away from 'published'), also clear
+    // the publishedVersionId so the public viewer returns 404. Re-publishing
+    // later sets a fresh publishedVersionId via publishVersion().
+    if (patch.status !== 'published') {
+      data.publishedVersionId = null
+    }
+  }
+  if (typeof patch.publishedVersionId === 'string') {
+    data.publishedVersionId = patch.publishedVersionId
   }
 
   const updated = await db.document.update({ where: { id }, data })
@@ -306,7 +315,11 @@ export async function getVersion(
 
 /**
  * Fetch the published document by slug — the document's status must be
- * 'published' and we return its latest Version's model + warnings.
+ * 'published'. We return the *published* version (the version that was
+ * explicitly promoted via publishVersion), NOT the latest version — so
+ * editing a draft after publishing does NOT change the public page.
+ * If publishedVersionId is null (legacy docs published before this field
+ * existed), fall back to latestVersion for backward compat.
  */
 export async function getPublishedBySlug(slug: string): Promise<{
   document: { id: string; title: string; slug: string; updatedAt: string }
@@ -315,9 +328,11 @@ export async function getPublishedBySlug(slug: string): Promise<{
 } | null> {
   const doc = await db.document.findUnique({
     where: { slug },
-    include: { latestVersion: true },
+    include: { latestVersion: true, publishedVersion: true },
   })
-  if (!doc || doc.status !== 'published' || !doc.latestVersion) return null
+  if (!doc || doc.status !== 'published') return null
+  const pubVer = doc.publishedVersion ?? doc.latestVersion
+  if (!pubVer) return null
   return {
     document: {
       id: doc.id,
@@ -325,8 +340,40 @@ export async function getPublishedBySlug(slug: string): Promise<{
       slug: doc.slug,
       updatedAt: doc.updatedAt.toISOString(),
     },
-    model: JSON.parse(doc.latestVersion.modelJson) as NoteDocument,
-    warnings: JSON.parse(doc.latestVersion.warningsJson) as Warning[],
+    model: JSON.parse(pubVer.modelJson) as NoteDocument,
+    warnings: JSON.parse(pubVer.warningsJson) as Warning[],
+  }
+}
+
+/**
+ * Promote a specific version to "published": sets status='published' AND
+ * publishedVersionId = that version's id. The latestVersionId is NOT changed
+ * — the editor keeps working on the latest draft. The public viewer will
+ * read publishedVersion from now on.
+ * If versionId is omitted, the latest version is used (backward-compat with
+ * the old "save + set status" publish flow).
+ */
+export async function publishVersion(
+  documentId: string,
+  versionId?: string,
+): Promise<{ id: string; status: string; publishedVersionId: string | null } | null> {
+  const doc = await db.document.findUnique({
+    where: { id: documentId },
+    select: { id: true, latestVersionId: true },
+  })
+  if (!doc) throw new DocumentNotFoundError(documentId)
+  const targetVersionId = versionId ?? doc.latestVersionId
+  if (!targetVersionId) {
+    throw new Error('Cannot publish a document with no versions')
+  }
+  const updated = await db.document.update({
+    where: { id: documentId },
+    data: { status: 'published', publishedVersionId: targetVersionId },
+  })
+  return {
+    id: updated.id,
+    status: updated.status,
+    publishedVersionId: updated.publishedVersionId,
   }
 }
 

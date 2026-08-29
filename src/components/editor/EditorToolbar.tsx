@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import {
   Undo2, Redo2, Save, Rocket, ChevronLeft, PanelLeft, PanelLeftClose, PanelRight, PanelRightClose, Circle,
-  Download, MoreVertical, Globe, GlobeLock, ExternalLink, Keyboard, Settings, FileDown, Maximize,
+  Download, MoreVertical, Globe, GlobeLock, ExternalLink, Keyboard, Settings, FileDown, Maximize, Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -26,6 +26,7 @@ export interface EditorToolbarProps {
   dirty: boolean
   saving: boolean
   publishing: boolean
+  autosaveState: 'idle' | 'saving' | 'saved' | 'error'
   onSave: () => void
   onPublish: () => void
   onUnpublish: () => void
@@ -39,7 +40,7 @@ export interface EditorToolbarProps {
 }
 
 export function EditorToolbar(props: EditorToolbarProps) {
-  const { documentId, slug, status, versionNumber, dirty, saving, publishing, onSave, onPublish, onUnpublish, onShowShortcuts, onShowSettings, title, titleRef } = props
+  const { documentId, slug, status, versionNumber, dirty, saving, publishing, autosaveState, onSave, onPublish, onUnpublish, onShowShortcuts, onShowSettings, title, titleRef } = props
   const isPublished = status === 'published'
   const doc = useEditorStore((s) => s.doc)
   const currentPage = useEditorStore((s) => s.currentPage)
@@ -87,9 +88,28 @@ export function EditorToolbar(props: EditorToolbarProps) {
         <div className="ml-auto flex items-center gap-2">
           <Badge variant="outline" className={cn('hidden border sm:inline-flex', statusStyle)}>{status}</Badge>
           <span className="hidden text-xs text-stone-400 md:inline">v{versionNumber}</span>
-          <span className="hidden items-center gap-1 text-xs text-stone-400 lg:inline-flex">
-            <Circle className={cn('h-2 w-2', dirty ? 'fill-amber-400 text-amber-400' : 'fill-emerald-400 text-emerald-400')} />
-            {dirty ? 'unsaved' : 'saved'}
+          <span className="hidden items-center gap-1 text-xs lg:inline-flex">
+            {autosaveState === 'saving' ? (
+              <>
+                <Loader2 className="h-2 w-2 animate-spin text-amber-500" />
+                <span className="text-amber-600">saving…</span>
+              </>
+            ) : autosaveState === 'error' ? (
+              <>
+                <Circle className="h-2 w-2 fill-rose-400 text-rose-400" />
+                <span className="text-rose-600">save failed</span>
+              </>
+            ) : dirty ? (
+              <>
+                <Circle className="h-2 w-2 fill-amber-400 text-amber-400" />
+                <span className="text-amber-600">unsaved</span>
+              </>
+            ) : (
+              <>
+                <Circle className="h-2 w-2 fill-emerald-400 text-emerald-400" />
+                <span className="text-emerald-600">saved</span>
+              </>
+            )}
           </span>
 
           {pageCount > 1 && (

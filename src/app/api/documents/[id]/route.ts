@@ -47,8 +47,8 @@ export async function PATCH(
   if (!body || typeof body !== 'object') {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
-  const patch = body as { title?: unknown; slug?: unknown; status?: unknown }
-  const clean: { title?: string; slug?: string; status?: string } = {}
+  const patch = body as { title?: unknown; slug?: unknown; status?: unknown; publishedVersionId?: unknown }
+  const clean: { title?: string; slug?: string; status?: string; publishedVersionId?: string } = {}
   if (patch.title !== undefined) {
     if (typeof patch.title !== 'string' || patch.title.trim().length === 0) {
       return NextResponse.json({ error: 'title must be a non-empty string' }, { status: 400 })
@@ -66,6 +66,12 @@ export async function PATCH(
       return NextResponse.json({ error: 'status must be a string' }, { status: 400 })
     }
     clean.status = patch.status
+  }
+  if (patch.publishedVersionId !== undefined) {
+    if (typeof patch.publishedVersionId !== 'string' || patch.publishedVersionId.length === 0) {
+      return NextResponse.json({ error: 'publishedVersionId must be a non-empty string' }, { status: 400 })
+    }
+    clean.publishedVersionId = patch.publishedVersionId
   }
 
   try {

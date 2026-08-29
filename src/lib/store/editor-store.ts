@@ -6,7 +6,7 @@
 'use client'
 
 import { create } from 'zustand'
-import type { Block, NoteDocument } from '@/lib/note-format/types'
+import type { Block, NoteDocument, NotePage } from '@/lib/note-format/types'
 
 /** A block location. [page, block] for top-level blocks; [page, questionBlock, child] for nested. */
 export type BlockPath = [number, number] | [number, number, number]
@@ -36,6 +36,11 @@ interface EditorState {
   resetDirty: () => void
   canUndo: () => boolean
   canRedo: () => boolean
+  // page management
+  addPage: () => void
+  deletePage: (page: number) => void
+  duplicatePage: (page: number) => void
+  updatePageMeta: (page: number, patch: Partial<Pick<NotePage, 'width' | 'height' | 'background'>>) => void
 }
 
 function clone<T>(v: T): T {
@@ -231,6 +236,56 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   canUndo: () => get().past.length > 0,
   canRedo: () => get().future.length > 0,
+
+  // ── Page management ───────────────────────────────────────────────────
+  addPage: () => set((s) => {
+    if (!s.doc) return {}
+    const next = clone(s.doc)
+    const newPage: NotePage = {
+      page: next.pages.length + 1,
+      width: 900,
+      height: 1270,
+      background: '#ffffff',
+      blocks: [emptyBlock('title')],
+    }
+    next.pages.push(newPage)
+    return { ...withHistory(s, next), currentPage: next.pages.length - 1, selectedPath: null }
+  }),
+
+  deletePage: (pageIdx) => set((s) => {
+    if (!s.doc) return {}
+    if (s.doc.pages.length <= 1) return {}  // don't delete the last page
+    const next = clone(s.doc)
+    next.pages.splice(pageIdx, 1)
+    // Re-number pages sequentially
+    next.pages.forEach((p, i) => { p.page = i + 1 })
+    const newCurrent = Math.max(0, Math.min(pageIdx, next.pages.length - 1))
+    return { ...withHistory(s, next), currentPage: newCurrent, selectedPath: null }
+  }),
+
+  duplicatePage: (pageIdx) => set((s) => {
+    if (!s.doc) return {}
+    const next = clone(s.doc)
+    const src = next.pages[pageIdx]
+    if (!src) return {}
+    const dup: NotePage = clone(src)
+    // Insert right after the source page
+    next.pages.splice(pageIdx + 1, 0, dup)
+    // Re-number pages sequentially
+    next.pages.forEach((p, i) => { p.page = i + 1 })
+    return { ...withHistory(s, next), currentPage: pageIdx + 1, selectedPath: null }
+  }),
+
+  updatePageMeta: (pageIdx, patch) => set((s) => {
+    if (!s.doc) return {}
+    const next = clone(s.doc)
+    const page = next.pages[pageIdx]
+    if (!page) return {}
+    if (patch.width !== undefined) page.width = patch.width
+    if (patch.height !== undefined) page.height = patch.height
+    if (patch.background !== undefined) page.background = patch.background
+    return withHistory(s, next)
+  }),
 }))
 
 /** Helper to create a fresh empty block of a given type. */

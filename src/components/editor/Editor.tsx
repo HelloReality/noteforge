@@ -37,12 +37,15 @@ export function Editor({ documentId, title, slug, status, versionNumber, model }
   const [leftOpen, setLeftOpen] = useState(true)
   const [rightOpen, setRightOpen] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [autosaveState, setAutosaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [publishing, setPublishing] = useState(false)
   const [savedNote, setSavedNote] = useState('')
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [renderMode, setRenderMode] = useState<'preview' | 'public'>('preview')
   const titleRef = useRef<HTMLInputElement>(null)
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastSavedDocRef = useRef<string>('')
 
   // initialise the store once on mount
   useEffect(() => { load(model) }, [])
@@ -51,6 +54,43 @@ export function Editor({ documentId, title, slug, status, versionNumber, model }
   useEffect(() => {
     recordRecent({ id: documentId, title, slug, status, ts: Date.now() })
   }, [documentId, title, slug, status])
+
+  // ── Autosave (debounced) ──────────────────────────────────────────────
+  // Whenever the doc changes (dirty becomes true), schedule a save after 2.5s.
+  // If the user keeps typing, the timer resets. On success, mark saved.
+  // On error, show "Save failed" and let the user retry with the manual Save button.
+  useEffect(() => {
+    if (!doc || !dirty) return
+    // Don't autosave the initial load — only after a real mutation.
+    const docJson = JSON.stringify(doc)
+    if (docJson === lastSavedDocRef.current) return
+    // Clear any pending timer
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current)
+    setAutosaveState('saving')
+    autosaveTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/documents/${documentId}/versions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: doc, note: 'Autosave' }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data?.error || 'Autosave failed')
+        lastSavedDocRef.current = docJson
+        useEditorStore.getState().resetDirty()
+        setAutosaveState('saved')
+        // Do NOT call router.refresh() here — it would re-render server
+        // components and flicker the editor on every keystroke. The version
+        // badge updates on the next manual save / publish / navigation.
+      } catch (e: any) {
+        setAutosaveState('error')
+        console.error('[autosave] failed:', e?.message)
+      }
+    }, 2500)
+    return () => {
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current)
+    }
+  }, [doc, dirty, documentId])
 
   const selectedBlock: Block | null = useMemo(() => {
     if (!doc || !selectedPath) return null
@@ -65,6 +105,7 @@ export function Editor({ documentId, title, slug, status, versionNumber, model }
   const handleSave = async () => {
     if (!doc) return
     setSaving(true)
+    setAutosaveState('saving')
     try {
       const res = await fetch(`/api/documents/${documentId}/versions`, {
         method: 'POST',
@@ -73,12 +114,15 @@ export function Editor({ documentId, title, slug, status, versionNumber, model }
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || 'Save failed')
+      lastSavedDocRef.current = JSON.stringify(doc)
       const { toast } = await import('sonner')
       toast.success(`Saved version ${data.number}`)
       useEditorStore.getState().resetDirty()
+      setAutosaveState('saved')
       setSavedNote('')
       router.refresh()
     } catch (e: any) {
+      setAutosaveState('error')
       const { toast } = await import('sonner')
       toast.error(e?.message || 'Save failed')
     } finally {
@@ -115,7 +159,10 @@ export function Editor({ documentId, title, slug, status, versionNumber, model }
 
   const handlePublish = async () => {
     if (!doc) return
-    // ensure a version is saved first
+    // Save the current state as a new version, then promote THAT version to
+    // "published" (sets publishedVersionId). The latestVersionId continues to
+    // point at the same version — but editing + saving later creates a NEW
+    // latestVersion that is NOT published, so the public page is unaffected.
     setPublishing(true)
     try {
       const vres = await fetch(`/api/documents/${documentId}/versions`, {
@@ -125,10 +172,11 @@ export function Editor({ documentId, title, slug, status, versionNumber, model }
       })
       const vdata = await vres.json()
       if (!vres.ok) throw new Error(vdata?.error || 'Save failed')
+      // Promote the just-saved version to published.
       const pres = await fetch(`/api/documents/${documentId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'published' }),
+        body: JSON.stringify({ status: 'published', publishedVersionId: vdata.versionId }),
       })
       const pdata = await pres.json()
       if (!pres.ok) throw new Error(pdata?.error || 'Publish failed')
@@ -184,6 +232,7 @@ export function Editor({ documentId, title, slug, status, versionNumber, model }
         dirty={dirty}
         saving={saving}
         publishing={publishing}
+        autosaveState={autosaveState}
         onSave={handleSave}
         onPublish={handlePublish}
         onUnpublish={handleUnpublish}

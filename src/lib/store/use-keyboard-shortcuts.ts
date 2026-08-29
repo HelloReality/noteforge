@@ -1,6 +1,8 @@
 // NoteForge — keyboard shortcuts hook for the editor (§12).
 // Binds: Ctrl/Cmd+Z (undo), Ctrl/Cmd+Shift+Z or Ctrl+Y (redo),
 // Ctrl/Cmd+S (save), Ctrl/Cmd+E (export), Ctrl/Cmd+K (focus title).
+// Also binds: Delete/Backspace (delete selected block), ArrowUp/Down/Left/Right
+// (move selected block by 1px or reorder via Shift+Arrow).
 // Prevents default browser behavior for these combos while the editor is mounted.
 
 'use client'
@@ -22,9 +24,31 @@ export function useEditorKeyboardShortcuts({
   const redo = useEditorStore((s) => s.redo)
   const canUndo = useEditorStore((s) => s.past.length > 0)
   const canRedo = useEditorStore((s) => s.future.length > 0)
+  const selectedPath = useEditorStore((s) => s.selectedPath)
+  const deleteBlock = useEditorStore((s) => s.deleteBlock)
+  const moveBlock = useEditorStore((s) => s.moveBlock)
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // Delete / Backspace: delete the selected block (only when not typing
+      // in an input/textarea/contenteditable — those handle their own deletion).
+      const target = e.target as HTMLElement
+      const isEditing = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable
+
+      if (!isEditing && selectedPath && (e.key === 'Delete' || e.key === 'Backspace')) {
+        e.preventDefault()
+        deleteBlock(selectedPath)
+        return
+      }
+
+      // ArrowUp/Down with Shift: reorder selected block up/down
+      // ArrowUp/Down without Shift: move block up/down too (convenient for the outline)
+      if (!isEditing && selectedPath && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+        e.preventDefault()
+        moveBlock(selectedPath, e.key === 'ArrowUp' ? 'up' : 'down')
+        return
+      }
+
       const mod = e.ctrlKey || e.metaKey
       if (!mod) return
       const key = e.key.toLowerCase()
@@ -67,5 +91,5 @@ export function useEditorKeyboardShortcuts({
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [undo, redo, canUndo, canRedo, canSave, onSave, onExport, titleRef])
+  }, [undo, redo, canUndo, canRedo, canSave, onSave, onExport, titleRef, selectedPath, deleteBlock, moveBlock])
 }
