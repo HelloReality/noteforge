@@ -1145,3 +1145,34 @@ Stage Summary:
   2. Connect to PostgreSQL successfully (no more datasource mismatch)
   3. Show all 5 documents on the home page
 - The user needs to trigger a new Vercel deployment from the latest commit (f6c96bb).
+
+---
+Task ID: 34 (New Supabase Database + Fresh v1 Seed)
+Agent: main (orchestrator)
+Task: Switch to a fresh Supabase database and seed it with v1 documents to fix the client-side error on the deployed site
+
+Work Log:
+- Root cause of the Vercel client-side error: the previous Supabase database (ap-northeast-1) contained documents in v2 format (from the old tldraw architecture with `schemaVersion: 2`, `pages[].elements[]`, `tldrawSnapshot`). The current v1 editor expects `pages[].blocks[]` and no `schemaVersion`, so loading a v2 document crashed the Editor client component.
+- The user provided a new Supabase database URL (ap-southeast-2 region).
+- Updated local `.env` to use the new Supabase URL.
+- Ran `prisma db push --accept-data-loss` — created the tables on the new database (no data loss since it was empty).
+- Ran `bun run scripts/seed.ts` — seeded 3 fresh v1 documents:
+  - Cybersecurity Notes — Sample (1 page, 3 blocks, 0 warnings)
+  - Cybersecurity Notes — Full Coverage Fixture (2 pages, 6 blocks, 0 warnings)
+  - Malicious Fixture — must import safely (1 page, 8 blocks, 19 warnings)
+- Verified all 3 documents are in v1 format:
+  - No `schemaVersion` field
+  - Has `pages[].blocks[]`
+  - No `pages[].elements[]`
+  - No `tldrawSnapshot`
+- Tested the edit page via curl: SSR HTML contains the v1 document model (`version: "1"`, `css`, `pages` with `blocks`), no `Application error`, no `tldraw`, no `legacy note`.
+- Pushed the latest commits to https://github.com/HelloReality/noteforge (HEAD: bf928fa).
+
+Stage Summary:
+- GitHub repo: https://github.com/HelloReality/noteforge (HEAD: bf928fa)
+- Database: new Supabase PostgreSQL (ap-southeast-2 region) — fresh, with 3 v1 documents
+- Local .env: updated with the new DATABASE_URL (gitignored)
+- The user needs to:
+  1. Update the DATABASE_URL environment variable in the Vercel project settings to the new Supabase URL.
+  2. Trigger a new Vercel deployment from the latest commit (bf928fa).
+  3. The deployed site should now work — the editor will load the v1 documents from the new database.
