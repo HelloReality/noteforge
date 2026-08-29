@@ -1046,3 +1046,23 @@ Priority recommendations for next phase:
 3. Add a beforeunload warning if there are unsaved changes when the user navigates away.
 4. Add a visual diff between the current draft and the published version.
 5. Add a "revert to published" button that restores the published version as a new draft.
+
+---
+Task ID: 30 (GitHub Push + Deployment Setup)
+Agent: main (orchestrator)
+Task: Push the codebase to GitHub for Vercel deployment
+
+Work Log:
+- Authenticated to GitHub API with the provided PAT (user: HelloReality).
+- Created the repository: https://github.com/HelloReality/noteforge (public).
+- Saved credentials to ~/.git-credentials (chmod 600, git credential helper = store) — token persists across sessions, never committed to the repo.
+- Saved repo metadata to .github-info.env (gitignored via .env* pattern) for future reference.
+- Added the `origin` remote pointing at https://github.com/HelloReality/noteforge.git.
+- Pushed all 14 local commits on `main` to GitHub.
+- Confirmed the push by re-fetching the repo via the GitHub API.
+
+Stage Summary:
+- GitHub repo: https://github.com/HelloReality/noteforge
+- Branch: main (14 commits, HEAD 52c0e1f)
+- All changes from Tasks 28 + 29 (hydration fix + functional editor audit + publish/draft separation + autosave + page management + keyboard shortcuts + PublishVersionButton) are now on GitHub.
+- The deployed Vercel version can be rebuilt from this repo to replace the stale tldraw editor with the current v1 block editor.
