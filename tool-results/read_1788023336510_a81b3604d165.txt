@@ -1,0 +1,827 @@
+     1→<!DOCTYPE html>
+     2→<html lang="en">
+     3→<head>
+     4→<meta charset="UTF-8">
+     5→<meta name="viewport" content="width=device-width, initial-scale=1.0">
+     6→<title>Top 50 Cybersecurity Interview Questions — Page 3</title>
+     7→<link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Architects+Daughter&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+     8→<style>
+     9→  /* ============================================
+    10→     HANDWRITTEN STUDY NOTES — PAGE 3
+    11→     Aesthetic: warm cream paper, pink margin rule,
+    12→     measured ink colors, wobbly hand-drawn borders.
+    13→     ============================================ */
+    14→
+    15→  :root {
+    16→    --paper: #fdf8ec;
+    17→    --paper-deep: #f6efde;
+    18→    --ink: #20211c;          /* near-black ink */
+    19→    --ink-soft: #3a3a35;
+    20→    --question: #4a3a8c;     /* blue-violet for questions */
+    21→    --emphasis: #b03028;     /* brick red for title/emphasis */
+    22→    --sage: #5f7a4a;        /* sage green for box titles / parentheticals */
+    23→    --margin-rule: #d98aa6;  /* pink hand-drawn margin rule */
+    24→    --margin-rule-soft: #e8b8c8;
+    25→    --grid-line: rgba(180, 150, 110, 0.18);
+    26→    --highlight-yellow: rgba(255, 235, 130, 0.45);
+    27→  }
+    28→
+    29→  * { box-sizing: border-box; }
+    30→
+    31→  html, body {
+    32→    margin: 0;
+    33→    padding: 0;
+    34→    background: var(--paper);
+    35→  }
+    36→
+    37→  body {
+    38→    font-family: 'Patrick Hand', 'Architects Daughter', cursive;
+    39→    color: var(--ink);
+    40→    font-size: 18px;
+    41→    line-height: 1.45;
+    42→    position: relative;
+    43→    min-height: 100vh;
+    44→    /* subtle paper grain via layered radial gradients */
+    45→    background-color: var(--paper);
+    46→    background-image:
+    47→      radial-gradient(ellipse at 20% 10%, rgba(220, 200, 150, 0.10), transparent 60%),
+    48→      radial-gradient(ellipse at 80% 80%, rgba(200, 180, 130, 0.08), transparent 60%),
+    49→      /* very faint horizontal rule lines, like notebook paper */
+    50→      repeating-linear-gradient(
+    51→        to bottom,
+    52→        transparent 0,
+    53→        transparent 31px,
+    54→        var(--grid-line) 31px,
+    55→        var(--grid-line) 32px
+    56→      );
+    57→  }
+    58→
+    59→  /* Pink hand-drawn vertical margin rule on the left */
+    60→  body::before {
+    61→    content: "";
+    62→    position: absolute;
+    63→    top: 0;
+    64→    bottom: 0;
+    65→    left: 70px;
+    66→    width: 2px;
+    67→    background: var(--margin-rule);
+    68→    /* wobbly hand-drawn feel via stacked shadows */
+    69→    box-shadow:
+    70→      1px 0 0 var(--margin-rule-soft),
+    71→      -1px 0 0 var(--margin-rule-soft),
+    72→      0 0 0 0.5px var(--margin-rule);
+    73→    transform: rotate(-0.15deg);
+    74→    transform-origin: top center;
+    75→    z-index: 1;
+    76→    pointer-events: none;
+    77→  }
+    78→  /* a second, fainter pink line further left for that double-rule notebook look */
+    79→  body::after {
+    80→    content: "";
+    81→    position: absolute;
+    82→    top: 0;
+    83→    bottom: 0;
+    84→    left: 62px;
+    85→    width: 1px;
+    86→    background: var(--margin-rule-soft);
+    87→    transform: rotate(0.2deg);
+    88→    transform-origin: top center;
+    89→    z-index: 1;
+    90→    pointer-events: none;
+    91→  }
+    92→
+    93→  /* Page container — leaves room for the left margin rule */
+    94→  .page {
+    95→    max-width: 1024px;
+    96→    margin: 0 auto;
+    97→    padding: 48px 40px 60px 110px;
+    98→    position: relative;
+    99→    z-index: 2;
+   100→  }
+   101→
+   102→  /* ============ HEADER ============ */
+   103→  .top-bar {
+   104→    display: flex;
+   105→    justify-content: space-between;
+   106→    align-items: center;
+   107→    margin-bottom: 14px;
+   108→    font-family: 'Architects Daughter', cursive;
+   109→    font-size: 16px;
+   110→    color: var(--ink-soft);
+   111→  }
+   112→
+   113→  .top-bar .left-tag {
+   114→    font-style: italic;
+   115→    opacity: 0.85;
+   116→  }
+   117→
+   118→  .page-badge {
+   119→    display: inline-block;
+   120→    padding: 4px 16px;
+   121→    border: 2px solid var(--emphasis);
+   122→    border-radius: 14px 10px 16px 8px / 8px 14px 10px 16px; /* wobbly */
+   123→    color: var(--emphasis);
+   124→    font-weight: bold;
+   125→    font-family: 'Architects Daughter', cursive;
+   126→    transform: rotate(-1deg);
+   127→    background: rgba(255, 245, 230, 0.5);
+   128→  }
+   129→
+   130→  /* Title with underline that looks hand-drawn */
+   131→  h1.title {
+   132→    font-family: 'Caveat', cursive;
+   133→    font-weight: 700;
+   134→    color: var(--emphasis);
+   135→    font-size: 42px;
+   136→    line-height: 1.1;
+   137→    margin: 6px 0 4px 0;
+   138→    text-align: center;
+   139→    transform: rotate(-0.4deg);
+   140→    position: relative;
+   141→    padding-bottom: 18px;
+   142→  }
+   143→  /* hand-drawn underline via SVG background */
+   144→  h1.title::after {
+   145→    content: "";
+   146→    position: absolute;
+   147→    left: 12%;
+   148→    right: 12%;
+   149→    bottom: 4px;
+   150→    height: 6px;
+   151→    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 12' preserveAspectRatio='none'><path d='M2 6 Q 80 1, 160 5 T 320 6 T 480 5 T 598 6' stroke='%23b03028' stroke-width='2.5' fill='none' stroke-linecap='round'/></svg>");
+   152→    background-repeat: no-repeat;
+   153→    background-size: 100% 100%;
+   154→  }
+   155→
+   156→  .subtitle {
+   157→    font-family: 'Architects Daughter', cursive;
+   158→    text-align: center;
+   159→    color: var(--sage);
+   160→    font-size: 16px;
+   161→    margin: 0 0 28px 0;
+   162→    transform: rotate(-0.2deg);
+   163→  }
+   164→  .subtitle .paren { color: var(--sage); }
+   165→
+   166→  /* ============ DASHED DIVIDER ============ */
+   167→  hr.divider {
+   168→    border: none;
+   169→    border-top: 2px dashed rgba(80, 60, 40, 0.35);
+   170→    margin: 28px 0;
+   171→    transform: rotate(-0.1deg);
+   172→  }
+   173→
+   174→  /* ============ QUESTION BLOCKS ============ */
+   175→  .q-block {
+   176→    margin-bottom: 22px;
+   177→    padding-top: 4px;
+   178→  }
+   179→
+   180→  .q-head {
+   181→    font-family: 'Architects Daughter', cursive;
+   182→    color: var(--question);
+   183→    font-size: 21px;
+   184→    font-weight: bold;
+   185→    margin-bottom: 8px;
+   186→    line-height: 1.35;
+   187→  }
+   188→  .q-head .qnum {
+   189→    display: inline-block;
+   190→    margin-right: 6px;
+   191→    color: var(--question);
+   192→  }
+   193→
+   194→  ul.notes {
+   195→    list-style: none;
+   196→    padding: 0;
+   197→    margin: 6px 0 8px 4px;
+   198→  }
+   199→  ul.notes li {
+   200→    position: relative;
+   201→    padding-left: 26px;
+   202→    margin-bottom: 6px;
+   203→    line-height: 1.45;
+   204→  }
+   205→  /* hand-drawn bullet dot via SVG */
+   206→  ul.notes li::before {
+   207→    content: "";
+   208→    position: absolute;
+   209→    left: 4px;
+   210→    top: 9px;
+   211→    width: 9px;
+   212→    height: 9px;
+   213→    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'><path d='M5 1 Q 1 1, 1 5 Q 1 9, 5 9 Q 9 9, 9 5 Q 9 1, 5 1 Z' fill='%234a3a8c'/></svg>");
+   214→    background-repeat: no-repeat;
+   215→    background-size: 100% 100%;
+   216→    transform: rotate(-3deg);
+   217→  }
+   218→
+   219→  .ink-red    { color: var(--emphasis); font-weight: bold; }
+   220→  .ink-green  { color: var(--sage); font-weight: bold; }
+   221→  .ink-violet { color: var(--question); font-weight: bold; }
+   222→  .paren      { color: var(--sage); font-style: italic; }
+   223→
+   224→  /* ============ TWO-COLUMN GRID ============ */
+   225→  .grid-2 {
+   226→    display: grid;
+   227→    grid-template-columns: 1fr 1fr;
+   228→    gap: 18px;
+   229→    margin-top: 10px;
+   230→  }
+   231→  .grid-3-1 {
+   232→    /* 60% text / 40% callout */
+   233→    display: grid;
+   234→    grid-template-columns: 1.5fr 1fr;
+   235→    gap: 18px;
+   236→    margin-top: 10px;
+   237→  }
+   238→
+   239→  /* ============ HAND-DRAWN BOXES ============ */
+   240→  .box {
+   241→    position: relative;
+   242→    padding: 14px 16px 16px 16px;
+   243→    background: rgba(255, 252, 240, 0.65);
+   244→    /* wobbly hand-drawn border via SVG background */
+   245→    border-radius: 14px 10px 16px 12px / 12px 16px 10px 14px;
+   246→    box-shadow:
+   247→      0 1px 0 rgba(120, 90, 60, 0.10),
+   248→      2px 3px 0 rgba(120, 90, 60, 0.08);
+   249→  }
+   250→  .box.dashed {
+   251→    background-image:
+   252→      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%'><rect x='3' y='3' width='calc(100% - 6px)' height='calc(100% - 6px)' rx='12' ry='12' fill='none' stroke='%23b03028' stroke-width='2' stroke-dasharray='8 5' stroke-linecap='round'/></svg>");
+   253→    background-repeat: no-repeat;
+   254→    background-size: 100% 100%;
+   255→    border: none;
+   256→  }
+   257→  .box.sage {
+   258→    background-image:
+   259→      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%'><rect x='3' y='3' width='calc(100% - 6px)' height='calc(100% - 6px)' rx='12' ry='12' fill='none' stroke='%235f7a4a' stroke-width='2' stroke-dasharray='7 4' stroke-linecap='round'/></svg>");
+   260→    background-repeat: no-repeat;
+   261→    background-size: 100% 100%;
+   262→    border: none;
+   263→  }
+   264→  .box.violet {
+   265→    background-image:
+   266→      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%'><rect x='3' y='3' width='calc(100% - 6px)' height='calc(100% - 6px)' rx='12' ry='12' fill='none' stroke='%234a3a8c' stroke-width='2' stroke-dasharray='7 4' stroke-linecap='round'/></svg>");
+   267→    background-repeat: no-repeat;
+   268→    background-size: 100% 100%;
+   269→    border: none;
+   270→  }
+   271→
+   272→  .box-title {
+   273→    font-family: 'Architects Daughter', cursive;
+   274→    font-size: 17px;
+   275→    font-weight: bold;
+   276→    color: var(--sage);
+   277→    text-align: center;
+   278→    margin: 2px 0 8px 0;
+   279→    text-decoration: underline;
+   280→    text-decoration-color: var(--sage);
+   281→    text-underline-offset: 3px;
+   282→  }
+   283→  .box.red .box-title { color: var(--emphasis); text-decoration-color: var(--emphasis); }
+   284→  .box.violet .box-title { color: var(--question); text-decoration-color: var(--question); }
+   285→
+   286→  /* Slight per-box rotation for hand-drawn feel */
+   287→  .rot-1 { transform: rotate(-0.5deg); }
+   288→  .rot-2 { transform: rotate(0.4deg); }
+   289→  .rot-3 { transform: rotate(-0.8deg); }
+   290→  .rot-4 { transform: rotate(0.6deg); }
+   291→
+   292→  /* ============ CODE / SQL ============ */
+   293→  .code {
+   294→    font-family: 'Architects Daughter', monospace;
+   295→    background: rgba(245, 240, 225, 0.7);
+   296→    padding: 8px 10px;
+   297→    margin: 4px 0;
+   298→    font-size: 15px;
+   299→    border-radius: 6px 8px 5px 7px;
+   300→    color: var(--ink);
+   301→    line-height: 1.4;
+   302→    word-break: break-word;
+   303→  }
+   304→  .label-small {
+   305→    font-family: 'Architects Daughter', cursive;
+   306→    font-size: 14px;
+   307→    color: var(--ink-soft);
+   308→    margin-top: 6px;
+   309→    display: block;
+   310→  }
+   311→  .label-small.red { color: var(--emphasis); font-weight: bold; }
+   312→  .label-small.green { color: var(--sage); font-weight: bold; }
+   313→
+   314→  /* ============ DIAGRAMS ============ */
+   315→  .diagram {
+   316→    display: flex;
+   317→    align-items: center;
+   318→    justify-content: center;
+   319→    gap: 6px;
+   320→    flex-wrap: wrap;
+   321→    margin: 6px 0;
+   322→  }
+   323→  .node {
+   324→    border: 2px solid var(--ink-soft);
+   325→    border-radius: 8px 6px 9px 7px;
+   326→    padding: 6px 9px;
+   327→    background: rgba(255, 252, 240, 0.85);
+   328→    text-align: center;
+   329→    font-family: 'Architects Daughter', cursive;
+   330→    font-size: 13px;
+   331→    line-height: 1.2;
+   332→    min-width: 64px;
+   333→    display: flex;
+   334→    flex-direction: column;
+   335→    align-items: center;
+   336→    gap: 3px;
+   337→  }
+   338→  .node svg { display: block; }
+   339→  .node.user    { border-color: var(--ink-soft); }
+   340→  .node.attacker{ border-color: var(--emphasis); color: var(--emphasis); }
+   341→  .node.server  { border-color: var(--question); }
+   342→  .node.db      { border-color: var(--emphasis); background: rgba(255, 235, 225, 0.7); }
+   343→  .node.action  { border-color: var(--sage); color: var(--sage); border-style: dashed; }
+   344→  .node.reject  { border-color: var(--emphasis); color: var(--emphasis); border-style: dashed; background: rgba(255, 230, 225, 0.7); }
+   345→
+   346→  .arrow {
+   347→    font-family: 'Architects Daughter', cursive;
+   348→    font-size: 13px;
+   349→    color: var(--ink-soft);
+   350→    text-align: center;
+   351→    max-width: 96px;
+   352→    line-height: 1.25;
+   353→    padding: 0 2px;
+   354→  }
+   355→
+   356→  .flow-caption {
+   357→    font-family: 'Architects Daughter', cursive;
+   358→    font-size: 13px;
+   359→    color: var(--emphasis);
+   360→    text-align: center;
+   361→    margin: 6px 0 2px 0;
+   362→    font-style: italic;
+   363→  }
+   364→  .flow-caption.green { color: var(--sage); }
+   365→
+   366→  .flow-divider {
+   367→    border: none;
+   368→    border-top: 1.5px dashed rgba(120, 90, 60, 0.4);
+   369→    margin: 12px 4px;
+   370→  }
+   371→
+   372→  /* ============ CHECKLIST ============ */
+   373→  .check-item {
+   374→    display: flex;
+   375→    align-items: flex-start;
+   376→    gap: 8px;
+   377→    margin-bottom: 6px;
+   378→    font-size: 16px;
+   379→    line-height: 1.35;
+   380→  }
+   381→  .check-item svg {
+   382→    flex-shrink: 0;
+   383→    margin-top: 2px;
+   384→  }
+   385→
+   386→  /* ============ CONTINUED NOTE ============ */
+   387→  .continued-note {
+   388→    margin-top: 30px;
+   389→    text-align: right;
+   390→    font-family: 'Architects Daughter', cursive;
+   391→    font-size: 15px;
+   392→    color: var(--sage);
+   393→    font-style: italic;
+   394→    transform: rotate(-0.3deg);
+   395→  }
+   396→  .continued-note .arrow-tag {
+   397→    color: var(--emphasis);
+   398→    font-weight: bold;
+   399→  }
+   400→
+   401→  /* ============ HIGHLIGHT MARK ============ */
+   402→  mark.hl {
+   403→    background: var(--highlight-yellow);
+   404→    padding: 0 2px;
+   405→    border-radius: 2px;
+   406→    color: var(--ink);
+   407→  }
+   408→
+   409→  /* ============ RESPONSIVE ============ */
+   410→  @media (max-width: 1000px) {
+   411→    .grid-2, .grid-3-1 {
+   412→      grid-template-columns: 1fr;
+   413→    }
+   414→    .page {
+   415→      padding: 32px 20px 40px 90px;
+   416→    }
+   417→    h1.title { font-size: 32px; }
+   418→  }
+   419→  @media (max-width: 600px) {
+   420→    body::before { left: 38px; }
+   421→    body::after { left: 32px; }
+   422→    .page {
+   423→      padding: 24px 14px 30px 60px;
+   424→    }
+   425→    h1.title { font-size: 26px; }
+   426→    .q-head { font-size: 18px; }
+   427→    .diagram { gap: 4px; }
+   428→    .node { min-width: 56px; font-size: 12px; }
+   429→    .arrow { font-size: 11px; max-width: 76px; }
+   430→  }
+   431→</style>
+   432→</head>
+   433→<body>
+   434→
+   435→<div class="page">
+   436→
+   437→  <!-- ============ HEADER ============ -->
+   438→  <div class="top-bar">
+   439→    <span class="left-tag">Cybersecurity Interview Prep &middot; Notes</span>
+   440→    <span class="page-badge">Page 3</span>
+   441→  </div>
+   442→
+   443→  <h1 class="title">Top 50 Cybersecurity Interview Questions</h1>
+   444→  <div class="subtitle"><span class="paren">(Web &amp; App Security &mdash; SQLi, XSS, CSRF, SSRF, API Hardening)</span></div>
+   445→
+   446→  <hr class="divider">
+   447→
+   448→  <!-- ============ Q11 — SQL INJECTION ============ -->
+   449→  <section class="q-block">
+   450→    <div class="q-head">
+   451→      <span class="qnum">11.</span>Explain SQL Injection and how parameterized queries prevent it.
+   452→    </div>
+   453→    <ul class="notes">
+   454→      <li>SQL Injection <span class="paren">(SQLi)</span> occurs when an attacker inserts <span class="ink-red">malicious SQL code</span> via input fields.</li>
+   455→      <li>Attacker can read, modify or delete data, bypass authentication, escalate privileges, etc.</li>
+   456→      <li><span class="ink-green">Prevention:</span> use parameterized queries / prepared statements, input validation, least-privilege DB accounts.</li>
+   457→    </ul>
+   458→
+   459→    <div class="grid-2">
+   460→      <!-- Vulnerable Query box -->
+   461→      <div class="box dashed red rot-1">
+   462→        <div class="box-title">Vulnerable Query</div>
+   463→        <div class="code">
+   464→          SELECT * FROM users<br>
+   465→          WHERE username = '" + userInput + "'<br>
+   466→          AND password = '" + pass + "'
+   467→        </div>
+   468→        <span class="label-small red">Attacker Input:</span>
+   469→        <div class="code" style="color: var(--emphasis);">' OR '1'='1</div>
+   470→        <span class="label-small red">Result:</span>
+   471→        <div style="font-family: 'Architects Daughter', cursive; font-size: 14px; color: var(--emphasis);">
+   472→          Condition always TRUE &rarr; <mark class="hl">Access Granted!</mark>
+   473→        </div>
+   474→      </div>
+   475→
+   476→      <!-- Parameterized Query box -->
+   477→      <div class="box sage rot-2">
+   478→        <div class="box-title">Parameterized Query (Safe)</div>
+   479→        <div class="code">
+   480→          SELECT * FROM users<br>
+   481→          WHERE username = ?<br>
+   482→          AND password = ?
+   483→        </div>
+   484→        <span class="label-small green">Parameters:</span>
+   485→        <div class="code" style="color: var(--sage);">
+   486→          username = userInput<br>
+   487→          password = pass
+   488→        </div>
+   489→        <span class="label-small green">Result:</span>
+   490→        <div style="font-family: 'Architects Daughter', cursive; font-size: 14px; color: var(--sage);">
+   491→          Input treated as <em>data</em>, not code &rarr; not executable.
+   492→        </div>
+   493→      </div>
+   494→    </div>
+   495→  </section>
+   496→
+   497→  <hr class="divider">
+   498→
+   499→  <!-- ============ Q12 — XSS ============ -->
+   500→  <section class="q-block">
+   501→    <div class="q-head">
+   502→      <span class="qnum">12.</span>What is Cross-Site Scripting (XSS), and how is reflected XSS different from stored XSS?
+   503→    </div>
+   504→    <ul class="notes">
+   505→      <li>XSS allows attackers to inject <span class="ink-red">malicious scripts</span> into web pages viewed by other users.</li>
+   506→      <li><span class="ink-green">Reflected XSS:</span> payload is reflected off the server <span class="paren">(e.g. in search results, error messages)</span> &mdash; usually delivered via a crafted link.</li>
+   507→      <li><span class="ink-red">Stored XSS:</span> payload is stored on the server <span class="paren">(e.g. in DB)</span> and served to every visitor &mdash; higher blast radius.</li>
+   508→    </ul>
+   509→
+   510→    <div class="grid-2">
+   511→      <!-- Reflected XSS Flow -->
+   512→      <div class="box sage rot-3">
+   513→        <div class="box-title">Reflected XSS Flow</div>
+   514→        <div class="diagram">
+   515→          <div class="node user">
+   516→            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#20211c" stroke-width="1.6" stroke-linecap="round">
+   517→              <circle cx="12" cy="7" r="3.2"/>
+   518→              <path d="M5 21 Q 6 14, 12 14 Q 18 14, 19 21"/>
+   519→            </svg>
+   520→            User
+   521→          </div>
+   522→          <div class="arrow">request with<br>malicious script &rarr;</div>
+   523→          <div class="node server">
+   524→            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4a3a8c" stroke-width="1.6" stroke-linecap="round">
+   525→              <rect x="4" y="5" width="16" height="5" rx="1"/>
+   526→              <rect x="4" y="13" width="16" height="5" rx="1"/>
+   527→              <circle cx="8" cy="7.5" r="0.8" fill="#4a3a8c"/>
+   528→              <circle cx="8" cy="15.5" r="0.8" fill="#4a3a8c"/>
+   529→            </svg>
+   530→            Web<br>Server
+   531→          </div>
+   532→          <div class="arrow">response reflects<br>script &rarr;</div>
+   533→          <div class="node user">
+   534→            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#20211c" stroke-width="1.6" stroke-linecap="round">
+   535→              <circle cx="12" cy="7" r="3.2"/>
+   536→              <path d="M5 21 Q 6 14, 12 14 Q 18 14, 19 21"/>
+   537→            </svg>
+   538→            User
+   539→          </div>
+   540→        </div>
+   541→        <div class="flow-caption green">&rdsh; Script executes in user's browser</div>
+   542→      </div>
+   543→
+   544→      <!-- Stored XSS Flow -->
+   545→      <div class="box dashed red rot-4">
+   546→        <div class="box-title">Stored XSS Flow</div>
+   547→        <div class="diagram">
+   548→          <div class="node attacker">
+   549→            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b03028" stroke-width="1.6" stroke-linecap="round">
+   550→              <circle cx="12" cy="7" r="3.2"/>
+   551→              <path d="M5 21 Q 6 14, 12 14 Q 18 14, 19 21"/>
+   552→              <path d="M9 7 L 11 5 L 13 5 L 15 7" stroke-width="1.2"/>
+   553→            </svg>
+   554→            Attacker
+   555→          </div>
+   556→          <div class="arrow">injects script &rarr;</div>
+   557→          <div class="node server">
+   558→            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4a3a8c" stroke-width="1.6" stroke-linecap="round">
+   559→              <rect x="4" y="5" width="16" height="5" rx="1"/>
+   560→              <rect x="4" y="13" width="16" height="5" rx="1"/>
+   561→              <circle cx="8" cy="7.5" r="0.8" fill="#4a3a8c"/>
+   562→              <circle cx="8" cy="15.5" r="0.8" fill="#4a3a8c"/>
+   563→            </svg>
+   564→            Web<br>Server
+   565→          </div>
+   566→          <div class="arrow">script stored &rarr;</div>
+   567→          <div class="node db">
+   568→            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b03028" stroke-width="1.6" stroke-linecap="round">
+   569→              <ellipse cx="12" cy="6" rx="7" ry="2.4"/>
+   570→              <path d="M5 6 V 18 Q 5 20.4, 12 20.4 Q 19 20.4, 19 18 V 6"/>
+   571→              <path d="M5 11 Q 5 13.4, 12 13.4 Q 19 13.4, 19 11"/>
+   572→            </svg>
+   573→            DB
+   574→          </div>
+   575→        </div>
+   576→        <div class="diagram" style="margin-top: 6px;">
+   577→          <div class="node user">
+   578→            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#20211c" stroke-width="1.6" stroke-linecap="round">
+   579→              <circle cx="12" cy="7" r="3.2"/>
+   580→              <path d="M5 21 Q 6 14, 12 14 Q 18 14, 19 21"/>
+   581→            </svg>
+   582→            User
+   583→          </div>
+   584→          <div class="arrow">requests page &rarr;</div>
+   585→          <div class="node server">
+   586→            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4a3a8c" stroke-width="1.6" stroke-linecap="round">
+   587→              <rect x="4" y="5" width="16" height="5" rx="1"/>
+   588→              <rect x="4" y="13" width="16" height="5" rx="1"/>
+   589→              <circle cx="8" cy="7.5" r="0.8" fill="#4a3a8c"/>
+   590→              <circle cx="8" cy="15.5" r="0.8" fill="#4a3a8c"/>
+   591→            </svg>
+   592→            Web<br>Server
+   593→          </div>
+   594→          <div class="arrow">sends stored<br>script &rarr;</div>
+   595→          <div class="node user">
+   596→            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#20211c" stroke-width="1.6" stroke-linecap="round">
+   597→              <circle cx="12" cy="7" r="3.2"/>
+   598→              <path d="M5 21 Q 6 14, 12 14 Q 18 14, 19 21"/>
+   599→            </svg>
+   600→            User
+   601→          </div>
+   602→        </div>
+   603→        <div class="flow-caption">&rdsh; Script executes in user's browser</div>
+   604→      </div>
+   605→    </div>
+   606→  </section>
+   607→
+   608→  <hr class="divider">
+   609→
+   610→  <!-- ============ Q13 — CSRF ============ -->
+   611→  <section class="q-block">
+   612→    <div class="q-head">
+   613→      <span class="qnum">13.</span>What is CSRF, and how do CSRF tokens protect against it?
+   614→    </div>
+   615→    <ul class="notes">
+   616→      <li>CSRF <span class="paren">(Cross-Site Request Forgery)</span> tricks a logged-in user into performing <span class="ink-red">unwanted actions</span> on a web app where they're authenticated.</li>
+   617→      <li>Attacker crafts a malicious link/form that the victim's browser auto-submits with session cookies.</li>
+   618→      <li><span class="ink-green">CSRF Token</span> &mdash; a unique, unpredictable per-session value &mdash; ensures the request originated from the legitimate app UI.</li>
+   619→    </ul>
+   620→
+   621→    <div class="box violet rot-1">
+   622→      <div class="box-title">How a CSRF Token Works</div>
+   623→
+   624→      <div class="diagram">
+   625→        <div class="node user">
+   626→          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#20211c" stroke-width="1.6" stroke-linecap="round">
+   627→            <circle cx="12" cy="7" r="3.2"/>
+   628→            <path d="M5 21 Q 6 14, 12 14 Q 18 14, 19 21"/>
+   629→          </svg>
+   630→          User
+   631→        </div>
+   632→        <div class="arrow">login &rarr;</div>
+   633→        <div class="node server">
+   634→          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4a3a8c" stroke-width="1.6" stroke-linecap="round">
+   635→            <rect x="4" y="5" width="16" height="5" rx="1"/>
+   636→            <rect x="4" y="13" width="16" height="5" rx="1"/>
+   637→            <circle cx="8" cy="7.5" r="0.8" fill="#4a3a8c"/>
+   638→            <circle cx="8" cy="15.5" r="0.8" fill="#4a3a8c"/>
+   639→          </svg>
+   640→          Server
+   641→        </div>
+   642→        <div class="arrow">sends page<br>with CSRF token &rarr;</div>
+   643→        <div class="node action">
+   644→          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5f7a4a" stroke-width="1.6" stroke-linecap="round">
+   645→            <rect x="5" y="10" width="14" height="9" rx="1.5"/>
+   646→            <path d="M8 10 V 7 Q 8 4, 12 4 Q 16 4, 16 7 V 10"/>
+   647→            <circle cx="12" cy="14.5" r="1.2" fill="#5f7a4a"/>
+   648→          </svg>
+   649→          Browser<br><span style="font-size: 11px;">[token stored]</span>
+   650→        </div>
+   651→      </div>
+   652→
+   653→      <div class="diagram" style="margin-top: 8px;">
+   654→        <div class="node action">
+   655→          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5f7a4a" stroke-width="1.6" stroke-linecap="round">
+   656→            <rect x="5" y="10" width="14" height="9" rx="1.5"/>
+   657→            <path d="M8 10 V 7 Q 8 4, 12 4 Q 16 4, 16 7 V 10"/>
+   658→            <circle cx="12" cy="14.5" r="1.2" fill="#5f7a4a"/>
+   659→          </svg>
+   660→          Browser
+   661→        </div>
+   662→        <div class="arrow">submits form<br>+ CSRF token &rarr;</div>
+   663→        <div class="node server">
+   664→          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4a3a8c" stroke-width="1.6" stroke-linecap="round">
+   665→            <rect x="4" y="5" width="16" height="5" rx="1"/>
+   666→            <rect x="4" y="13" width="16" height="5" rx="1"/>
+   667→            <circle cx="8" cy="7.5" r="0.8" fill="#4a3a8c"/>
+   668→            <circle cx="8" cy="15.5" r="0.8" fill="#4a3a8c"/>
+   669→          </svg>
+   670→          Server<br><span style="font-size: 11px;">validates token</span>
+   671→        </div>
+   672→      </div>
+   673→
+   674→      <div class="diagram" style="margin-top: 8px;">
+   675→        <div class="node action" style="border-color: var(--sage); color: var(--sage);">
+   676→          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5f7a4a" stroke-width="2" stroke-linecap="round">
+   677→            <path d="M5 12 L 10 17 L 19 7"/>
+   678→          </svg>
+   679→          if valid &rarr; process request
+   680→        </div>
+   681→        <div style="width: 30px;"></div>
+   682→        <div class="node reject">
+   683→          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#b03028" stroke-width="2" stroke-linecap="round">
+   684→            <path d="M6 6 L 18 18 M18 6 L 6 18"/>
+   685→          </svg>
+   686→          if invalid &rarr; reject
+   687→        </div>
+   688→      </div>
+   689→    </div>
+   690→  </section>
+   691→
+   692→  <hr class="divider">
+   693→
+   694→  <!-- ============ Q14 — SSRF ============ -->
+   695→  <section class="q-block">
+   696→    <div class="q-head">
+   697→      <span class="qnum">14.</span>What is Server-Side Request Forgery (SSRF), and why is it dangerous in cloud environments?
+   698→    </div>
+   699→    <ul class="notes">
+   700→      <li>SSRF occurs when a server is tricked into making requests to <span class="ink-red">internal or external resources</span> on the attacker's behalf.</li>
+   701→      <li>Attacker can reach internal services, metadata APIs, or bypass firewalls from a trusted vantage point.</li>
+   702→      <li>In cloud, SSRF can lead to credential theft, instance takeover, or full data exposure.</li>
+   703→    </ul>
+   704→
+   705→    <div class="grid-3-1">
+   706→      <!-- Diagram of SSRF in cloud -->
+   707→      <div class="box violet rot-2">
+   708→        <div class="box-title">SSRF Attack Path (Cloud)</div>
+   709→        <div class="diagram">
+   710→          <div class="node attacker">
+   711→            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b03028" stroke-width="1.6" stroke-linecap="round">
+   712→              <circle cx="12" cy="7" r="3.2"/>
+   713→              <path d="M5 21 Q 6 14, 12 14 Q 18 14, 19 21"/>
+   714→            </svg>
+   715→            Attacker
+   716→          </div>
+   717→          <div class="arrow">crafts URL &rarr;</div>
+   718→          <div class="node server">
+   719→            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4a3a8c" stroke-width="1.6" stroke-linecap="round">
+   720→              <rect x="4" y="5" width="16" height="5" rx="1"/>
+   721→              <rect x="4" y="13" width="16" height="5" rx="1"/>
+   722→              <circle cx="8" cy="7.5" r="0.8" fill="#4a3a8c"/>
+   723→              <circle cx="8" cy="15.5" r="0.8" fill="#4a3a8c"/>
+   724→            </svg>
+   725→            Vulnerable<br>Server
+   726→          </div>
+   727→          <div class="arrow">server fetches<br>internal URL &rarr;</div>
+   728→          <div class="node" style="border-color: var(--emphasis); color: var(--emphasis); background: rgba(255, 235, 225, 0.7);">
+   729→            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b03028" stroke-width="1.6" stroke-linecap="round">
+   730→              <path d="M7 14 Q 3 14, 3 10 Q 3 7, 6 7 Q 7 4, 11 4 Q 15 4, 16 7 Q 20 7, 20 11 Q 20 14, 17 14 Z"/>
+   731→              <path d="M9 14 V 18 M 12 14 V 20 M 15 14 V 18"/>
+   732→            </svg>
+   733→            Cloud<br>Metadata
+   734→          </div>
+   735→        </div>
+   736→        <div class="flow-caption">&rdsh; IAM credentials leaked to attacker</div>
+   737→      </div>
+   738→
+   739→      <!-- Callout: SSRF Impact in Cloud -->
+   740→      <div class="box dashed red rot-3">
+   741→        <div class="box-title">SSRF Impact in Cloud</div>
+   742→        <ul class="notes" style="margin: 4px 0 0 0;">
+   743→          <li>Access <span class="ink-red">internal network</span> <span class="paren">(other services, DBs)</span></li>
+   744→          <li>Access <span class="ink-red">cloud metadata</span> <span class="paren">(e.g. AWS IMDS)</span></li>
+   745→          <li>Read IAM role credentials</li>
+   746→          <li>Pivot to other cloud resources</li>
+   747→          <li>Data exfiltration &amp; privilege escalation</li>
+   748→        </ul>
+   749→      </div>
+   750→    </div>
+   751→  </section>
+   752→
+   753→  <hr class="divider">
+   754→
+   755→  <!-- ============ Q15 — API SECURITY ============ -->
+   756→  <section class="q-block">
+   757→    <div class="q-head">
+   758→      <span class="qnum">15.</span>How would you secure an API against common attacks such as injection, broken authorization, and abuse?
+   759→    </div>
+   760→    <ul class="notes">
+   761→      <li><span class="ink-red">Injection:</span> validate &amp; sanitize inputs, use parameterized queries, enforce strict schema with allow-lists.</li>
+   762→      <li><span class="ink-red">Broken Auth:</span> OAuth 2.0 / OIDC, short-lived tokens, refresh-token rotation, MFA on sensitive scopes.</li>
+   763→      <li><span class="ink-red">Abuse:</span> rate-limit per IP &amp; per user, quota headers, WAF, anomaly detection on traffic patterns.</li>
+   764→    </ul>
+   765→
+   766→    <div class="grid-3-1">
+   767→      <!-- Checklist box -->
+   768→      <div class="box sage rot-1" style="grid-column: span 1;">
+   769→        <div class="box-title">API Security Checklist</div>
+   770→        <div class="check-item">
+   771→          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5f7a4a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+   772→            <path d="M4 12 L 10 18 L 20 6"/>
+   773→          </svg>
+   774→          Authentication &amp; Authorization <span class="paren">(OAuth 2.0, OIDC)</span>
+   775→        </div>
+   776→        <div class="check-item">
+   777→          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5f7a4a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+   778→            <path d="M4 12 L 10 18 L 20 6"/>
+   779→          </svg>
+   780→          Input Validation <span class="paren">(schema + allow-list)</span>
+   781→        </div>
+   782→        <div class="check-item">
+   783→          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5f7a4a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+   784→            <path d="M4 12 L 10 18 L 20 6"/>
+   785→          </svg>
+   786→          Rate Limiting &amp; Quotas
+   787→        </div>
+   788→        <div class="check-item">
+   789→          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5f7a4a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+   790→            <path d="M4 12 L 10 18 L 20 6"/>
+   791→          </svg>
+   792→          HTTPS / TLS Everywhere
+   793→        </div>
+   794→        <div class="check-item">
+   795→          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5f7a4a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+   796→            <path d="M4 12 L 10 18 L 20 6"/>
+   797→          </svg>
+   798→          Logging, Monitoring &amp; Alerting
+   799→        </div>
+   800→      </div>
+   801→
+   802→      <!-- Quick mnemonic callout -->
+   803→      <div class="box violet rot-2">
+   804→        <div class="box-title">Quick Mnemonic</div>
+   805→        <div style="font-family: 'Architects Daughter', cursive; font-size: 16px; line-height: 1.5;">
+   806→          <span class="ink-violet">A</span>uthn &middot;
+   807→          <span class="ink-violet">A</span>uthz &middot;
+   808→          <span class="ink-violet">I</span>nput &middot;
+   809→          <span class="ink-violet">R</span>ate &middot;
+   810→          <span class="ink-violet">T</span>ransit &middot;
+   811→          <span class="ink-violet">L</span>og
+   812→        </div>
+   813→        <div class="paren" style="font-size: 13px; margin-top: 6px;">(AAIRT-L &mdash; "alert")</div>
+   814→      </div>
+   815→    </div>
+   816→  </section>
+   817→
+   818→  <!-- Continued note -->
+   819→  <div class="continued-note">
+   820→    Continued on Page 4 &nbsp;<span class="arrow-tag">&rarr;</span>
+   821→  </div>
+   822→
+   823→</div>
+   824→
+   825→</body>
+   826→</html>
+   827→

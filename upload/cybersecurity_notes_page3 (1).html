@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Top 50 Cybersecurity Interview Questions — Page 3</title>
+<link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Architects+Daughter&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  /* ============================================
+     HANDWRITTEN STUDY NOTES — PAGE 3
+     Aesthetic: warm cream paper, pink margin rule,
+     measured ink colors, wobbly hand-drawn borders.
+     ============================================ */
+
+  :root {
+    --paper: #fdf8ec;
+    --paper-deep: #f6efde;
+    --ink: #20211c;          /* near-black ink */
+    --ink-soft: #3a3a35;
+    --question: #4a3a8c;     /* blue-violet for questions */
+    --emphasis: #b03028;     /* brick red for title/emphasis */
+    --sage: #5f7a4a;        /* sage green for box titles / parentheticals */
+    --margin-rule: #d98aa6;  /* pink hand-drawn margin rule */
+    --margin-rule-soft: #e8b8c8;
+    --grid-line: rgba(180, 150, 110, 0.18);
+    --highlight-yellow: rgba(255, 235, 130, 0.45);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--paper);
+  }
+
+  body {
+    font-family: 'Patrick Hand', 'Architects Daughter', cursive;
+    color: var(--ink);
+    font-size: 18px;
+    line-height: 1.45;
+    position: relative;
+    min-height: 100vh;
+    /* subtle paper grain via layered radial gradients */
+    background-color: var(--paper);
+    background-image:
+      radial-gradient(ellipse at 20% 10%, rgba(220, 200, 150, 0.10), transparent 60%),
+      radial-gradient(ellipse at 80% 80%, rgba(200, 180, 130, 0.08), transparent 60%),
+      /* very faint horizontal rule lines, like notebook paper */
+      repeating-linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent 31px,
+        var(--grid-line) 31px,
+        var(--grid-line) 32px
+      );
+  }
+
+  /* Pink hand-drawn vertical margin rule on the left */
+  body::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 70px;
+    width: 2px;
+    background: var(--margin-rule);
+    /* wobbly hand-drawn feel via stacked shadows */
+    box-shadow:
+      1px 0 0 var(--margin-rule-soft),
+      -1px 0 0 var(--margin-rule-soft),
+      0 0 0 0.5px var(--margin-rule);
+    transform: rotate(-0.15deg);
+    transform-origin: top center;
+    z-index: 1;
+    pointer-events: none;
+  }
+  /* a second, fainter pink line further left for that double-rule notebook look */
+  body::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 62px;
+    width: 1px;
+    background: var(--margin-rule-soft);
+    transform: rotate(0.2deg);
+    transform-origin: top center;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  /* Page container — leaves room for the left margin rule */
+  .page {
+    max-width: 1024px;
+    margin: 0 auto;
+    padding: 48px 40px 60px 110px;
+    position: relative;
+    z-index: 2;
+  }
+
+  /* ============ HEADER ============ */
+  .top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    font-family: 'Architects Daughter', cursive;
+    font-size: 16px;
+    color: var(--ink-soft);
+  }
+
+  .top-bar .left-tag {
+    font-style: italic;
+    opacity: 0.85;
+  }
+
+  .page-badge {
+    display: inline-block;
+    padding: 4px 16px;
+    border: 2px solid var(--emphasis);
+    border-radius: 14px 10px 16px 8px / 8px 14px 10px 16px; /* wobbly */
+    color: var(--emphasis);
+    font-weight: bold;
+    font-family: 'Architects Daughter', cursive;
+    transform: rotate(-1deg);
+    background: rgba(255, 245, 230, 0.5);
+  }
+
+  /* Title with underline that looks hand-drawn */
+  h1.title {
+    font-family: 'Caveat', cursive;
+    font-weight: 700;
+    color: var(--emphasis);
+    font-size: 42px;
+    line-height: 1.1;
+    margin: 6px 0 4px 0;
+    text-align: center;
+    transform: rotate(-0.4deg);
+    position: relative;
+    padding-bottom: 18px;
+  }
+  /* hand-drawn underline via SVG background */
+  h1.title::after {
+    content: "";
+    position: absolute;
+    left: 12%;
+    right: 12%;
+    bottom: 4px;
+    height: 6px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 12' preserveAspectRatio='none'><path d='M2 6 Q 80 1, 160 5 T 320 6 T 480 5 T 598 6' stroke='%23b03028' stroke-width='2.5' fill='none' stroke-linecap='round'/></svg>");
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+  }
+
+  .subtitle {
+    font-family: 'Architects Daughter', cursive;
+    text-align: center;
+    color: var(--sage);
+    font-size: 16px;
+    margin: 0 0 28px 0;
+    transform: rotate(-0.2deg);
+  }
+  .subtitle .paren { color: var(--sage); }
+
+  /* ============ DASHED DIVIDER ============ */
+  hr.divider {
+    border: none;
+    border-top: 2px dashed rgba(80, 60, 40, 0.35);
+    margin: 28px 0;
+    transform: rotate(-0.1deg);
+  }
+
+  /* ============ QUESTION BLOCKS ============ */
+  .q-block {
+    margin-bottom: 22px;
+    padding-top: 4px;
+  }
+
+  .q-head {
+    font-family: 'Architects Daughter', cursive;
+    color: var(--question);
+    font-size: 21px;
+    font-weight: bold;
+    margin-bottom: 8px;
+    line-height: 1.35;
+  }
+  .q-head .qnum {
+    display: inline-block;
+    margin-right: 6px;
+    color: var(--question);
+  }
+
+  ul.notes {
+    list-style: none;
+    padding: 0;
+    margin: 6px 0 8px 4px;
+  }
+  ul.notes li {
+    position: relative;
+    padding-left: 26px;
+    margin-bottom: 6px;
+    line-height: 1.45;
+  }
+  /* hand-drawn bullet dot via SVG */
+  ul.notes li::before {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 9px;
+    width: 9px;
+    height: 9px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'><path d='M5 1 Q 1 1, 1 5 Q 1 9, 5 9 Q 9 9, 9 5 Q 9 1, 5 1 Z' fill='%234a3a8c'/></svg>");
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    transform: rotate(-3deg);
+  }
+
+  .ink-red    { color: var(--emphasis); font-weight: bold; }
+  .ink-green  { color: var(--sage); font-weight: bold; }
+  .ink-violet { color: var(--question); font-weight: bold; }
+  .paren      { color: var(--sage); font-style: italic; }
+
+  /* ============ TWO-COLUMN GRID ============ */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-top: 10px;
+  }
+  .grid-3-1 {
+    /* 60% text / 40% callout */
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 18px;
+    margin-top: 10px;
+  }
+
+  /* ============ HAND-DRAWN BOXES ============ */
+  .box {
+    position: relative;
+    padding: 14px 16px 16px 16px;
+    background: rgba(255, 252, 240, 0.65);
+    /* wobbly hand-drawn border via SVG background */
+    border-radius: 14px 10px 16px 12px / 12px 16px 10px 14px;
+    box-shadow:
+      0 1px 0 rgba(120, 90, 60, 0.10),
+      2px 3px 0 rgba(120, 90, 60, 0.08);
+  }
+  .box.dashed {
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%'><rect x='3' y='3' width='calc(100% - 6px)' height='calc(100% - 6px)' rx='12' ry='12' fill='none' stroke='%23b03028' stroke-width='2' stroke-dasharray='8 5' stroke-linecap='round'/></svg>");
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    border: none;
+  }
+  .box.sage {
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%'><rect x='3' y='3' width='calc(100% - 6px)' height='calc(100% - 6px)' rx='12' ry='12' fill='none' stroke='%235f7a4a' stroke-width='2' stroke-dasharray='7 4' stroke-linecap='round'/></svg>");
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    border: none;
+  }
+  .box.violet {
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%'><rect x='3' y='3' width='calc(100% - 6px)' height='calc(100% - 6px)' rx='12' ry='12' fill='none' stroke='%234a3a8c' stroke-width='2' stroke-dasharray='7 4' stroke-linecap='round'/></svg>");
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    border: none;
+  }
+
+  .box-title {
+    font-family: 'Architects Daughter', cursive;
+    font-size: 17px;
+    font-weight: bold;
+    color: var(--sage);
+    text-align: center;
+    margin: 2px 0 8px 0;
+    text-decoration: underline;
+    text-decoration-color: var(--sage);
+    text-underline-offset: 3px;
+  }
+  .box.red .box-title { color: var(--emphasis); text-decoration-color: var(--emphasis); }
+  .box.violet .box-title { color: var(--question); text-decoration-color: var(--question); }
+
+  /* Slight per-box rotation for hand-drawn feel */
+  .rot-1 { transform: rotate(-0.5deg); }
+  .rot-2 { transform: rotate(0.4deg); }
+  .rot-3 { transform: rotate(-0.8deg); }
+  .rot-4 { transform: rotate(0.6deg); }
+
+  /* ============ CODE / SQL ============ */
+  .code {
+    font-family: 'Architects Daughter', monospace;
+    background: rgba(245, 240, 225, 0.7);
+    padding: 8px 10px;
+    margin: 4px 0;
+    font-size: 15px;
+    border-radius: 6px 8px 5px 7px;
+    color: var(--ink);
+    line-height: 1.4;
+    word-break: break-word;
+  }
+  .label-small {
+    font-family: 'Architects Daughter', cursive;
+    font-size: 14px;
+    color: var(--ink-soft);
+    margin-top: 6px;
+    display: block;
+  }
+  .label-small.red { color: var(--emphasis); font-weight: bold; }
+  .label-small.green { color: var(--sage); font-weight: bold; }
+
+  /* ============ DIAGRAMS ============ */
+  .diagram {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin: 6px 0;
+  }
+  .node {
+    border: 2px solid var(--ink-soft);
+    border-radius: 8px 6px 9px 7px;
+    padding: 6px 9px;
+    background: rgba(255, 252, 240, 0.85);
+    text-align: center;
+    font-family: 'Architects Daughter', cursive;
+    font-size: 13px;
+    line-height: 1.2;
+    min-width: 64px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+  }
+  .node svg { display: block; }
+  .node.user    { border-color: var(--ink-soft); }
+  .node.attacker{ border-color: var(--emphasis); color: var(--emphasis); }
+  .node.server  { border-color: var(--question); }
+  .node.db      { border-color: var(--emphasis); background: rgba(255, 235, 225, 0.7); }
+  .node.action  { border-color: var(--sage); color: var(--sage); border-style: dashed; }
+  .node.reject  { border-color: var(--emphasis); color: var(--emphasis); border-style: dashed; background: rgba(255, 230, 225, 0.7); }
+
+  .arrow {
+    font-family: 'Architects Daughter', cursive;
+    font-size: 13px;
+    color: var(--ink-soft);
+    text-align: center;
+    max-width: 96px;
+    line-height: 1.25;
+    padding: 0 2px;
+  }
+
+  .flow-caption {
+    font-family: 'Architects Daughter', cursive;
+    font-size: 13px;
+    color: var(--emphasis);
+    text-align: center;
+    margin: 6px 0 2px 0;
+    font-style: italic;
+  }
+  .flow-caption.green { color: var(--sage); }
+
+  .flow-divider {
+    border: none;
+    border-top: 1.5px dashed rgba(120, 90, 60, 0.4);
+    margin: 12px 4px;
+  }
+
+  /* ============ CHECKLIST ============ */
+  .check-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 16px;
+    line-height: 1.35;
+  }
+  .check-item svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  /* ============ CONTINUED NOTE ============ */
+  .continued-note {
+    margin-top: 30px;
+    text-align: right;
+    font-family: 'Architects Daughter', cursive;
+    font-size: 15px;
+    color: var(--sage);
+    font-style: italic;
+    transform: rotate(-0.3deg);
+  }
+  .continued-note .arrow-tag {
+    color: var(--emphasis);
+    font-weight: bold;
+  }
+
+  /* ============ HIGHLIGHT MARK ============ */
+  mark.hl {
+    background: var(--highlight-yellow);
+    padding: 0 2px;
+    border-radius: 2px;
+    color: var(--ink);
+  }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 1000px) {
+    .grid-2, .grid-3-1 {
+      grid-template-columns: 1fr;
+    }
+    .page {
+      padding: 32px 20px 40px 90px;
+    }
+    h1.title { font-size: 32px; }
+  }
+  @media (max-width: 600px) {
+    body::before { left: 38px; }
+    body::after { left: 32px; }
+    .page {
+      padding: 24px 14px 30px 60px;
+    }
+    h1.title { font-size: 26px; }
+    .q-head { font-size: 18px; }
+    .diagram { gap: 4px; }
+    .node { min-width: 56px; font-size: 12px; }
+    .arrow { font-size: 11px; max-width: 76px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ============ HEADER ============ -->
+  <div class="top-bar">
+    <span class="left-tag">Cybersecurity Interview Prep &middot; Notes</span>
+    <span class="page-badge">Page 3</span>
+  </div>
+
+  <h1 class="title">Top 50 Cybersecurity Interview Questions</h1>
+  <div class="subtitle"><span class="paren">(Web &amp; App Security &mdash; SQLi, XSS, CSRF, SSRF, API Hardening)</span></div>
+
+  <hr class="divider">
+
+  <!-- ============ Q11 — SQL INJECTION ============ -->
+  <section class="q-block">
+    <div class="q-head">
+      <span class="qnum">11.</span>Explain SQL Injection and how parameterized queries prevent it.
+    </div>
+    <ul class="notes">
+      <li>SQL Injection <span class="paren">(SQLi)</span> occurs when an attacker inserts <span class="ink-red">malicious SQL code</span> via input fields.</li>
+      <li>Attacker can read, modify or delete data, bypass authentication, escalate privileges, etc.</li>
+      <li><span class="ink-green">Prevention:</span> use parameterized queries / prepared statements, input validation, least-privilege DB accounts.</li>
+    </ul>
+
+    <div class="grid-2">
+      <!-- Vulnerable Query box -->
+      <div class="box dashed red rot-1">
+        <div class="box-title">Vulnerable Query</div>
+        <div class="code">
+          SELECT * FROM users<br>
+          WHERE username = '" + userInput + "'<br>
+          AND password = '" + pass + "'
+        </div>
+        <span class="label-small red">Attacker Input:</span>
+        <div class="code" style="color: var(--emphasis);">' OR '1'='1</div>
+        <span class="label-small red">Result:</span>
+        <div style="font-family: 'Architects Daughter', cursive; font-size: 14px; color: var(--emphasis);">
+          Condition always TRUE &rarr; <mark class="hl">Access Granted!</mark>
+        </div>
+      </div>
+
+      <!-- Parameterized Query box -->
+      <div class="box sage rot-2">
+        <div class="box-title">Parameterized Query (Safe)</div>
+        <div class="code">
+          SELECT * FROM users<br>
+          WHERE username = ?<br>
+          AND password = ?
+        </div>
+        <span class="label-small green">Parameters:</span>
+        <div class="code" style="color: var(--sage);">
+          username = userInput<br>
+          password = pass
+        </div>
+        <span class="label-small green">Result:</span>
+        <div style="font-family: 'Architects Daughter', cursive; font-size: 14px; color: var(--sage);">
+          Input treated as <em>data</em>, not code &rarr; not executable.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- ============ Q12 — XSS ============ -->
+  <section class="q-block">
+    <div class="q-head">
+      <span class="qnum">12.</span>What is Cross-Site Scripting (XSS), and how is reflected XSS different from stored XSS?
+    </div>
+    <ul class="notes">
+      <li>XSS allows attackers to inject <span class="ink-red">malicious scripts</span> into web pages viewed by other users.</li>
+      <li><span class="ink-green">Reflected XSS:</span> payload is reflected off the server <span class="paren">(e.g. in search results, error messages)</span> &mdash; usually delivered via a crafted link.</li>
+      <li><span class="ink-red">Stored XSS:</span> payload is stored on the server <span class="paren">(e.g. in DB)</span> and served to every visitor &mdash; higher blast radius.</li>
+    </ul>
+
+    <div class="grid-2">
+      <!-- Reflected XSS Flow -->
+      <div class="box sage rot-3">
+        <div class="box-title">Reflected XSS Flow</div>
+        <div class="diagram">
+          <div class="node user">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#20211c" stroke-width="1.6" stroke-linecap="round">
+              <circle cx="12" cy="7" r="3.2"/>
+              <path d="M5 21 Q 6 14, 12 14 Q 18 14, 19 21"/>
+            </svg>
+            User
+          </div>
+          <div class="arrow">request with<br>malicious script &rarr;</div>
+          <div class="node server">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4a3a8c" stroke-width="1.6" stroke-linecap="round">
+              <rect x="4" y="5" width="16" height="5" rx="1"/>
+              <rect x="4" y="13" width="16" height="5" rx="1"/>
+              <circle cx="8" cy="7.5" r="0.8" fill="#4a3a8c"/>
+              <circle cx="8" cy="15.5" r="0.8" fill="#4a3a8c"/>
+            </svg>
+            Web<br>Server
+          </div>
+          <div class="arrow">response reflects<br>script &rarr;</div>
+          <div class="node user">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#20211c" stroke-width="1.6" stroke-linecap="round">
+              <circle cx="12" cy="7" r="3.2"/>
+              <path d="M5 21 Q 6 14, 12 14 Q 18 14, 19 21"/>
+            </svg>
+            User
+          </div>
+        </div>
+        <div class="flow-caption green">&rdsh; Script executes in user's browser</div>
+      </div>
+
+      <!-- Stored XSS Flow -->
+      <div class="box dashed red rot-4">
+        <div class="box-title">Stored XSS Flow</div>
+        <div class="diagram">
+          <div class="node attacker">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b03028" stroke-width="1.6" stroke-linecap="round">
+              <circle cx="12" cy="7" r="3.2"/>
+              <path d="M5 21 Q 6 14, 12 14 Q 18 14, 19 21"/>
+              <path d="M9 7 L 11 5 L 13 5 L 15 7" stroke-width="1.2"/>
+            </svg>
+            Attacker
+          </div>
+          <div class="arrow">injects script &rarr;</div>
+          <div class="node server">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4a3a8c" stroke-width="1.6" stroke-linecap="round">
+              <rect x="4" y="5" width="16" height="5" rx="1"/>
+              <rect x="4" y="13" width="16" height="5" rx="1"/>
+              <circle cx="8" cy="7.5" r="0.8" fill="#4a3a8c"/>
+              <circle cx="8" cy="15.5" r="0.8" fill="#4a3a8c"/>
+            </svg>
+            Web<br>Server
+          </div>
+          <div class="arrow">script stored &rarr;</div>
+          <div class="node db">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b03028" stroke-width="1.6" stroke-linecap="round">
+              <ellipse cx="12" cy="6" rx="7" ry="2.4"/>
+              <path d="M5 6 V 18 Q 5 20.4, 12 20.4 Q 19 20.4, 19 18 V 6"/>
+              <path d="M5 11 Q 5 13.4, 12 13.4 Q 19 13.4, 19 11"/>
+            </svg>
+            DB
+          </div>
+        </div>
+        <div class="diagram" style="margin-top: 6px;">
+          <div class="node user">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#20211c" stroke-width="1.6" stroke-linecap="round">
+              <circle cx="12" cy="7" r="3.2"/>
+              <path d="M5 21 Q 6 14, 12 14 Q 18 14, 19 21"/>
+            </svg>
+            User
+          </div>
+          <div class="arrow">requests page &rarr;</div>
+          <div class="node server">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4a3a8c" stroke-width="1.6" stroke-linecap="round">
+              <rect x="4" y="5" width="16" height="5" rx="1"/>
+              <rect x="4" y="13" width="16" height="5" rx="1"/>
+              <circle cx="8" cy="7.5" r="0.8" fill="#4a3a8c"/>
+              <circle cx="8" cy="15.5" r="0.8" fill="#4a3a8c"/>
+            </svg>
+            Web<br>Server
+          </div>
+          <div class="arrow">sends stored<br>script &rarr;</div>
+          <div class="node user">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#20211c" stroke-width="1.6" stroke-linecap="round">
+              <circle cx="12" cy="7" r="3.2"/>
+              <path d="M5 21 Q 6 14, 12 14 Q 18 14, 19 21"/>
+            </svg>
+            User
+          </div>
+        </div>
+        <div class="flow-caption">&rdsh; Script executes in user's browser</div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- ============ Q13 — CSRF ============ -->
+  <section class="q-block">
+    <div class="q-head">
+      <span class="qnum">13.</span>What is CSRF, and how do CSRF tokens protect against it?
+    </div>
+    <ul class="notes">
+      <li>CSRF <span class="paren">(Cross-Site Request Forgery)</span> tricks a logged-in user into performing <span class="ink-red">unwanted actions</span> on a web app where they're authenticated.</li>
+      <li>Attacker crafts a malicious link/form that the victim's browser auto-submits with session cookies.</li>
+      <li><span class="ink-green">CSRF Token</span> &mdash; a unique, unpredictable per-session value &mdash; ensures the request originated from the legitimate app UI.</li>
+    </ul>
+
+    <div class="box violet rot-1">
+      <div class="box-title">How a CSRF Token Works</div>
+
+      <div class="diagram">
+        <div class="node user">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#20211c" stroke-width="1.6" stroke-linecap="round">
+            <circle cx="12" cy="7" r="3.2"/>
+            <path d="M5 21 Q 6 14, 12 14 Q 18 14, 19 21"/>
+          </svg>
+          User
+        </div>
+        <div class="arrow">login &rarr;</div>
+        <div class="node server">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4a3a8c" stroke-width="1.6" stroke-linecap="round">
+            <rect x="4" y="5" width="16" height="5" rx="1"/>
+            <rect x="4" y="13" width="16" height="5" rx="1"/>
+            <circle cx="8" cy="7.5" r="0.8" fill="#4a3a8c"/>
+            <circle cx="8" cy="15.5" r="0.8" fill="#4a3a8c"/>
+          </svg>
+          Server
+        </div>
+        <div class="arrow">sends page<br>with CSRF token &rarr;</div>
+        <div class="node action">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5f7a4a" stroke-width="1.6" stroke-linecap="round">
+            <rect x="5" y="10" width="14" height="9" rx="1.5"/>
+            <path d="M8 10 V 7 Q 8 4, 12 4 Q 16 4, 16 7 V 10"/>
+            <circle cx="12" cy="14.5" r="1.2" fill="#5f7a4a"/>
+          </svg>
+          Browser<br><span style="font-size: 11px;">[token stored]</span>
+        </div>
+      </div>
+
+      <div class="diagram" style="margin-top: 8px;">
+        <div class="node action">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5f7a4a" stroke-width="1.6" stroke-linecap="round">
+            <rect x="5" y="10" width="14" height="9" rx="1.5"/>
+            <path d="M8 10 V 7 Q 8 4, 12 4 Q 16 4, 16 7 V 10"/>
+            <circle cx="12" cy="14.5" r="1.2" fill="#5f7a4a"/>
+          </svg>
+          Browser
+        </div>
+        <div class="arrow">submits form<br>+ CSRF token &rarr;</div>
+        <div class="node server">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4a3a8c" stroke-width="1.6" stroke-linecap="round">
+            <rect x="4" y="5" width="16" height="5" rx="1"/>
+            <rect x="4" y="13" width="16" height="5" rx="1"/>
+            <circle cx="8" cy="7.5" r="0.8" fill="#4a3a8c"/>
+            <circle cx="8" cy="15.5" r="0.8" fill="#4a3a8c"/>
+          </svg>
+          Server<br><span style="font-size: 11px;">validates token</span>
+        </div>
+      </div>
+
+      <div class="diagram" style="margin-top: 8px;">
+        <div class="node action" style="border-color: var(--sage); color: var(--sage);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5f7a4a" stroke-width="2" stroke-linecap="round">
+            <path d="M5 12 L 10 17 L 19 7"/>
+          </svg>
+          if valid &rarr; process request
+        </div>
+        <div style="width: 30px;"></div>
+        <div class="node reject">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#b03028" stroke-width="2" stroke-linecap="round">
+            <path d="M6 6 L 18 18 M18 6 L 6 18"/>
+          </svg>
+          if invalid &rarr; reject
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- ============ Q14 — SSRF ============ -->
+  <section class="q-block">
+    <div class="q-head">
+      <span class="qnum">14.</span>What is Server-Side Request Forgery (SSRF), and why is it dangerous in cloud environments?
+    </div>
+    <ul class="notes">
+      <li>SSRF occurs when a server is tricked into making requests to <span class="ink-red">internal or external resources</span> on the attacker's behalf.</li>
+      <li>Attacker can reach internal services, metadata APIs, or bypass firewalls from a trusted vantage point.</li>
+      <li>In cloud, SSRF can lead to credential theft, instance takeover, or full data exposure.</li>
+    </ul>
+
+    <div class="grid-3-1">
+      <!-- Diagram of SSRF in cloud -->
+      <div class="box violet rot-2">
+        <div class="box-title">SSRF Attack Path (Cloud)</div>
+        <div class="diagram">
+          <div class="node attacker">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b03028" stroke-width="1.6" stroke-linecap="round">
+              <circle cx="12" cy="7" r="3.2"/>
+              <path d="M5 21 Q 6 14, 12 14 Q 18 14, 19 21"/>
+            </svg>
+            Attacker
+          </div>
+          <div class="arrow">crafts URL &rarr;</div>
+          <div class="node server">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4a3a8c" stroke-width="1.6" stroke-linecap="round">
+              <rect x="4" y="5" width="16" height="5" rx="1"/>
+              <rect x="4" y="13" width="16" height="5" rx="1"/>
+              <circle cx="8" cy="7.5" r="0.8" fill="#4a3a8c"/>
+              <circle cx="8" cy="15.5" r="0.8" fill="#4a3a8c"/>
+            </svg>
+            Vulnerable<br>Server
+          </div>
+          <div class="arrow">server fetches<br>internal URL &rarr;</div>
+          <div class="node" style="border-color: var(--emphasis); color: var(--emphasis); background: rgba(255, 235, 225, 0.7);">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b03028" stroke-width="1.6" stroke-linecap="round">
+              <path d="M7 14 Q 3 14, 3 10 Q 3 7, 6 7 Q 7 4, 11 4 Q 15 4, 16 7 Q 20 7, 20 11 Q 20 14, 17 14 Z"/>
+              <path d="M9 14 V 18 M 12 14 V 20 M 15 14 V 18"/>
+            </svg>
+            Cloud<br>Metadata
+          </div>
+        </div>
+        <div class="flow-caption">&rdsh; IAM credentials leaked to attacker</div>
+      </div>
+
+      <!-- Callout: SSRF Impact in Cloud -->
+      <div class="box dashed red rot-3">
+        <div class="box-title">SSRF Impact in Cloud</div>
+        <ul class="notes" style="margin: 4px 0 0 0;">
+          <li>Access <span class="ink-red">internal network</span> <span class="paren">(other services, DBs)</span></li>
+          <li>Access <span class="ink-red">cloud metadata</span> <span class="paren">(e.g. AWS IMDS)</span></li>
+          <li>Read IAM role credentials</li>
+          <li>Pivot to other cloud resources</li>
+          <li>Data exfiltration &amp; privilege escalation</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- ============ Q15 — API SECURITY ============ -->
+  <section class="q-block">
+    <div class="q-head">
+      <span class="qnum">15.</span>How would you secure an API against common attacks such as injection, broken authorization, and abuse?
+    </div>
+    <ul class="notes">
+      <li><span class="ink-red">Injection:</span> validate &amp; sanitize inputs, use parameterized queries, enforce strict schema with allow-lists.</li>
+      <li><span class="ink-red">Broken Auth:</span> OAuth 2.0 / OIDC, short-lived tokens, refresh-token rotation, MFA on sensitive scopes.</li>
+      <li><span class="ink-red">Abuse:</span> rate-limit per IP &amp; per user, quota headers, WAF, anomaly detection on traffic patterns.</li>
+    </ul>
+
+    <div class="grid-3-1">
+      <!-- Checklist box -->
+      <div class="box sage rot-1" style="grid-column: span 1;">
+        <div class="box-title">API Security Checklist</div>
+        <div class="check-item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5f7a4a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 12 L 10 18 L 20 6"/>
+          </svg>
+          Authentication &amp; Authorization <span class="paren">(OAuth 2.0, OIDC)</span>
+        </div>
+        <div class="check-item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5f7a4a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 12 L 10 18 L 20 6"/>
+          </svg>
+          Input Validation <span class="paren">(schema + allow-list)</span>
+        </div>
+        <div class="check-item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5f7a4a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 12 L 10 18 L 20 6"/>
+          </svg>
+          Rate Limiting &amp; Quotas
+        </div>
+        <div class="check-item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5f7a4a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 12 L 10 18 L 20 6"/>
+          </svg>
+          HTTPS / TLS Everywhere
+        </div>
+        <div class="check-item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5f7a4a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 12 L 10 18 L 20 6"/>
+          </svg>
+          Logging, Monitoring &amp; Alerting
+        </div>
+      </div>
+
+      <!-- Quick mnemonic callout -->
+      <div class="box violet rot-2">
+        <div class="box-title">Quick Mnemonic</div>
+        <div style="font-family: 'Architects Daughter', cursive; font-size: 16px; line-height: 1.5;">
+          <span class="ink-violet">A</span>uthn &middot;
+          <span class="ink-violet">A</span>uthz &middot;
+          <span class="ink-violet">I</span>nput &middot;
+          <span class="ink-violet">R</span>ate &middot;
+          <span class="ink-violet">T</span>ransit &middot;
+          <span class="ink-violet">L</span>og
+        </div>
+        <div class="paren" style="font-size: 13px; margin-top: 6px;">(AAIRT-L &mdash; "alert")</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Continued note -->
+  <div class="continued-note">
+    Continued on Page 4 &nbsp;<span class="arrow-tag">&rarr;</span>
+  </div>
+
+</div>
+
+</body>
+</html>
