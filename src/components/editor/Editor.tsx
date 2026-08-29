@@ -6,17 +6,22 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useEditorStore, emptyBlock, type BlockPath } from '@/lib/store/editor-store'
 import { useEditorKeyboardShortcuts } from '@/lib/store/use-keyboard-shortcuts'
-import type { Block, NoteDocument } from '@/lib/note-format/types'
+import type { Block, NoteDocument, NotePage as NotePageModel } from '@/lib/note-format/types'
 import { NoteRenderer } from '@/components/renderer'
+import { CanvasViewport, ZOOM_PRESETS, type ZoomMode } from './CanvasViewport'
 import { EditorToolbar } from './EditorToolbar'
 import { Outline } from './Outline'
 import { Inspector } from './Inspector'
 import { KeyboardShortcutsDialog } from '@/components/app/KeyboardShortcutsDialog'
 import { DocumentSettingsDialog } from '@/components/app/DocumentSettingsDialog'
 import { recordRecent } from '@/components/app/RecentlyViewed'
-import { Loader2, PanelLeftClose, PanelLeft, PanelRightClose, PanelRight, Eye } from 'lucide-react'
+import { Loader2, PanelLeftClose, PanelLeft, PanelRightClose, PanelRight, Eye, ZoomIn, ZoomOut, Maximize } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 export interface EditorProps {
   documentId: string
@@ -43,6 +48,8 @@ export function Editor({ documentId, title, slug, status, versionNumber, model }
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [renderMode, setRenderMode] = useState<'preview' | 'public'>('preview')
+  const [zoom, setZoom] = useState<ZoomMode>('fit')
+  const [currentScale, setCurrentScale] = useState(1)
   const titleRef = useRef<HTMLInputElement>(null)
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSavedDocRef = useRef<string>('')
@@ -262,14 +269,53 @@ export function Editor({ documentId, title, slug, status, versionNumber, model }
           <Outline currentPage={currentPage} />
         </aside>
 
-        {/* Preview canvas */}
+        {/* Canvas — fixed-page artboard with zoom/fit */}
         <section className="flex flex-col overflow-hidden">
           <div className="flex items-center justify-between border-b border-stone-200 bg-white px-4 py-2">
             <div className="flex items-center gap-2 text-xs text-stone-500">
               <Eye className="h-3.5 w-3.5" />
-              <span>Live preview · {renderMode} mode · Shared Renderer</span>
+              <span>Live preview · {renderMode} mode</span>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
+              {/* Zoom controls */}
+              <div className="flex items-center gap-1 rounded-md border border-stone-200">
+                <Button variant="ghost" size="sm" onClick={() => {
+                  // Zoom out by one step
+                  const numScale = typeof zoom === 'number' ? zoom : currentScale
+                  const newScale = Math.max(0.25, numScale - 0.25)
+                  setZoom(newScale)
+                }} className="h-7 w-7 p-0" title="Zoom out">
+                  <ZoomOut className="h-3.5 w-3.5" />
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="h-7 min-w-[52px] px-2 text-xs font-medium text-stone-600 hover:bg-stone-50">
+                      {zoom === 'fit' ? 'Fit' : `${Math.round((typeof zoom === 'number' ? zoom : currentScale) * 100)}%`}
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="center" className="w-32">
+                    {ZOOM_PRESETS.map((p) => (
+                      <DropdownMenuItem
+                        key={String(p.value)}
+                        onClick={() => setZoom(p.value)}
+                        className={cn(zoom === p.value && 'bg-amber-50 font-medium')}
+                      >
+                        {p.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button variant="ghost" size="sm" onClick={() => {
+                  const numScale = typeof zoom === 'number' ? zoom : currentScale
+                  const newScale = Math.min(4, numScale + 0.25)
+                  setZoom(newScale)
+                }} className="h-7 w-7 p-0" title="Zoom in">
+                  <ZoomIn className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setZoom('fit')} className="h-7 w-7 p-0" title="Fit to page">
+                  <Maximize className="h-3.5 w-3.5" />
+                </Button>
+              </div>
               {/* Preview mode toggle */}
               <div className="hidden items-center rounded-md border border-stone-200 bg-stone-50 p-0.5 sm:flex">
                 <button
@@ -299,9 +345,32 @@ export function Editor({ documentId, title, slug, status, versionNumber, model }
               </div>
             </div>
           </div>
-          <div className="flex-1 overflow-auto bg-stone-100 p-4">
-            <NoteRenderer doc={doc} mode={renderMode} />
-          </div>
+          {/* The canvas viewport — renders the CURRENT page as a fixed-size
+              artboard, scaled to fit. Document coordinates are never modified;
+              only the visual scale changes. */}
+          {(() => {
+            const page = doc.pages[currentPage]
+            if (!page) return null
+            // Render only the current page (not all pages) so the canvas is
+            // a single fixed-size artboard, not a long scrolling stack.
+            const singlePageDoc: NoteDocument = {
+              ...doc,
+              pages: [page],
+            }
+            return (
+              <div className="flex-1 min-h-0">
+                <CanvasViewport
+                  pageWidth={page.width}
+                  pageHeight={page.height}
+                  zoom={zoom}
+                  onScaleChange={setCurrentScale}
+                  padding={48}
+                >
+                  <NoteRenderer doc={singlePageDoc} mode={renderMode} />
+                </CanvasViewport>
+              </div>
+            )
+          })()}
         </section>
 
         {/* Inspector */}

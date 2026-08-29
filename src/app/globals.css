@@ -140,10 +140,12 @@
   border-radius: 8px;
   overflow: hidden;
 }
-/* Pages may be wider than the viewport on small screens — let users
-   scroll horizontally inside the page stack rather than the whole app. */
+/* Pages may be wider than the viewport on small screens. The editor's
+   CanvasViewport handles scaling/scrolling; the public/preview viewer
+   lets the browser handle overflow naturally (pages are centered and
+   the body scrolls). Do NOT set overflow-x:auto here — it creates a
+   competing scroll container that clips pages. */
 .noteforge-doc .noteforge-pages {
-  overflow-x: auto;
   padding: 0 16px;
 }
 

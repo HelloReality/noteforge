@@ -46,7 +46,13 @@ export function NoteRenderer({ doc, mode = 'public' }: NoteRendererProps): React
       {scopedCss ? (
         <style dangerouslySetInnerHTML={{ __html: scopedCss }} />
       ) : null}
-      <div className="noteforge-pages mx-auto my-8 flex max-w-[1100px] flex-col items-center gap-8">
+      {/*
+        The pages container simply stacks pages vertically and centers them.
+        It does NOT constrain the width — each page is a fixed-size artboard
+        (e.g. 1024×1400) and the surrounding viewport handles scaling/scroll.
+        This prevents the page from being clipped or reflowed by flex/max-width.
+      */}
+      <div className="noteforge-pages flex flex-col items-center gap-8 py-8">
         {doc.pages.map((page, i) => (
           <NotePage key={i} page={page} mode={mode} />
         ))}
