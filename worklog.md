@@ -1088,3 +1088,31 @@ Stage Summary:
   - `2d74aed` — fix: wrap /search page in Suspense for static prerendering
   - `e15c4d8` — config: skip ESLint during Vercel builds
 - The next Vercel build should succeed (the `/search` prerender error is resolved).
+
+---
+Task ID: 32 (Robust Vercel Build Fix — Server/Client Split)
+Agent: main (orchestrator)
+Task: The previous Suspense-only fix wasn't sufficient; restructure /search into server+client components with force-dynamic
+
+Work Log:
+- The Vercel build at 20:56 was cloning commit 52c0e1f (BEFORE my Suspense fix in commit 2d74aed). The user needed to trigger a new build from the latest commit.
+- However, to make the fix bulletproof (in case the Suspense-only approach inside a 'use client' page doesn't work in all Next.js 16 builds), restructured the /search page into the canonical server+client pattern:
+  - `src/app/search/page.tsx` — SERVER component (no 'use client'):
+    - `export const dynamic = 'force-dynamic'` → prevents static prerendering entirely, so useSearchParams never runs during build
+    - Wraps `<SearchClient />` in `<Suspense>` with a loading fallback
+  - `src/app/search/SearchClient.tsx` — CLIENT component ('use client'):
+    - Contains all the search UI + `useSearchParams()` + `useRouter()` + state/effects
+    - Moved the entire search logic here (250+ lines)
+- This is the definitive Next.js pattern for pages that use `useSearchParams` — the server component's `dynamic = 'force-dynamic'` is respected because it's not a client component, and the client component's `useSearchParams` runs at runtime (never during build).
+
+Stage Summary:
+- `bun run lint`: 0 errors, 0 warnings.
+- Committed + pushed: `d336bbb` — fix: split /search into server+client components with force-dynamic
+- Verified on GitHub:
+  - page.tsx is a server component (first code line: `import { Suspense }`)
+  - Has `export const dynamic = 'force-dynamic'`
+  - Has `<Suspense>` wrapper
+  - SearchClient.tsx has `'use client'` + `useSearchParams`
+- The Vercel build triggered from commit `d336bbb` should succeed — the `/search` page is now `force-dynamic` and will never be statically prerendered.
+
+Note to user: The previous Vercel build was using the OLD commit (52c0e1f). You need to trigger a NEW deployment from the latest commit (d336bbb). In Vercel: Deployments → click "Redeploy" or push a new commit to trigger auto-deploy.
