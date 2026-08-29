@@ -1,7 +1,7 @@
 // NoteForge — full-text search page (/search): searches across all document content.
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Search, ArrowLeft, FileText, Loader2, Hash, HashIcon } from 'lucide-react'
@@ -39,6 +39,26 @@ const BLOCK_TYPE_ICON: Record<string, string> = {
 }
 
 export default function SearchPage() {
+  // Wrap the inner SearchInner (which calls useSearchParams) in a Suspense
+  // boundary — required by Next.js 16 so static prerendering doesn't bail
+  // when it encounters a useSearchParams() hook during build.
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto w-full max-w-4xl px-4 py-8">
+          <div className="flex items-center justify-center py-12 text-stone-400">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <span className="ml-2 text-sm">Loading search…</span>
+          </div>
+        </div>
+      }
+    >
+      <SearchInner />
+    </Suspense>
+  )
+}
+
+function SearchInner() {
   const router = useRouter()
   const params = useSearchParams()
   const initialQuery = params.get('q') ?? ''
