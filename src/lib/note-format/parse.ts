@@ -80,7 +80,16 @@ export function parseNoteHtml(html: string): ParseResult {
     const headTitle = document.querySelector('title')?.textContent || undefined
     const firstH1 = body.querySelector('h1')
     const autoTitle = headTitle || (firstH1 ? (firstH1.textContent || '').trim() : 'Imported Note')
-    const page: NotePage = { page: 1, width: 1024, height: 1400, background: '#fdf8ec', blocks: [] }
+    // Estimate the page width from the original .page div (if present),
+    // otherwise default to 1024. Estimate height from the content — count
+    // blocks and assign ~80px per block + 600px base so the whole page fits.
+    const origPageDiv = body.querySelector('.page, [class*="page"]')
+    const pageWidth = origPageDiv?.getAttribute('data-width') ?
+      parseInt(origPageDiv.getAttribute('data-width')!, 10) || 1024 : 1024
+    // Rough height estimate: each block ~80px + base 800px, capped at 4000px
+    const blockCount = body.querySelectorAll('h1, h2, h3, p, ul, ol, blockquote, pre, table, img, hr, .q-block, .box, .diagram, .check-item').length
+    const estimatedHeight = Math.min(4000, Math.max(1400, 800 + blockCount * 80))
+    const page: NotePage = { page: 1, width: pageWidth, height: estimatedHeight, background: '#fdf8ec', blocks: [] }
     convertPlainHtmlToBlocks(body, page.blocks, warnings, 'document', ctx)
     const model: NoteDocument = { title: autoTitle, version: '1', generator, css: css.trim(), pages: [page] }
     return { model, warnings }
@@ -284,8 +293,11 @@ function htmlElementToBlock(
       const classStr = classList.join(' ').toLowerCase()
 
       // If it's a .q-block (question block in the user's HTML), unwrap children
+      // to the top level. Each child becomes its own block — the heading, the
+      // list, AND each box in the grid becomes a separately-selectable block.
       if (classList.some(c => c.toLowerCase().includes('q-block'))) {
-        // Unwrap: process children as blocks
+        // Unwrap: process children at the top level (NOT wrapped in a question)
+        // so each box/diagram/list is individually selectable in the outline.
         const children: Block[] = []
         for (const c of Array.from(el.childNodes)) {
           if (c.nodeType === 8) continue
@@ -296,21 +308,42 @@ function htmlElementToBlock(
             continue
           }
           if (c.nodeType !== 1) continue
-          const b = htmlElementToBlock(c as Element, warnings, `${path}.children[${children.length}]`, ctx)
+          const b = htmlElementToBlock(c as Element, warnings, `${path}.blocks[${children.length}]`, ctx)
           if (b) children.push(b)
         }
+        // Return the children as a question group so they stay together but
+        // each child is individually selectable.
         if (children.length > 0) {
           return { type: 'question', classes: classList, children }
         }
         return null
       }
 
+      // ── If it's a .grid-2 or .grid-3-1, split into separate raw-html blocks ──
+      // Each child box becomes its own individually-selectable raw-html block.
+      if (classList.some(c => /^grid-(2|3-1)$/i.test(c))) {
+        const gridChildren: Block[] = []
+        for (const c of Array.from(el.children)) {
+          if (c.nodeType !== 1) continue
+          const childEl = c as Element
+          // Each box in the grid → its own raw-html block
+          const rawHtml = sanitizeRawHtml(childEl, warnings, `${path}.blocks[${gridChildren.length}]`)
+          gridChildren.push({
+            type: 'raw-html',
+            html: rawHtml,
+            classes: parseClasses(childEl.getAttribute('class')),
+          })
+        }
+        if (gridChildren.length === 1) return gridChildren[0]
+        if (gridChildren.length > 1) {
+          // Wrap in a question so they stay grouped but are individually selectable
+          return { type: 'question', classes: classList, children: gridChildren }
+        }
+        return null
+      }
+
       // ── Preserve complex divs as raw-html blocks ──────────────────────
-      // If a div has complex children (grid-2, box, diagram, node, arrow,
-      // check-item, etc.) or uses inline SVGs/styles, preserve the ENTIRE
-      // div as a raw-html block so the original design is kept 1:1.
       const hasComplexChildren = el.querySelector('.grid-2, .grid-3-1, .box, .diagram, .node, .arrow, .check-item, .flow-caption, .code, .label-small, .top-bar, .q-head, svg, .box-title') !== null
-      const hasInlineStyle = el.hasAttribute('style')
       const isCallout = classList.some(c => /^(callout|box|tip|info|warning|warn|danger|note|alert)$/i.test(c)) ||
                         /\b(warning|tip|info|danger|note|alert|callout)\b/i.test(classStr)
 
@@ -326,7 +359,6 @@ function htmlElementToBlock(
       }
 
       if (isCallout) {
-        // Determine callout type from class
         let calloutType: CalloutType = 'note'
         if (/tip/i.test(classStr)) calloutType = 'tip'
         else if (/danger/i.test(classStr)) calloutType = 'danger'

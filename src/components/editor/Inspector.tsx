@@ -23,17 +23,99 @@ export interface InspectorProps {
 export function Inspector({ documentId, selectedBlock, selectedPath }: InspectorProps) {
   const updateBlock = useEditorStore((s) => s.updateBlock)
   const replaceBlock = useEditorStore((s) => s.replaceBlock)
+  const doc = useEditorStore((s) => s.doc)
+  const currentPage = useEditorStore((s) => s.currentPage)
+  const updatePageMeta = useEditorStore((s) => s.updatePageMeta)
 
   if (!selectedBlock || !selectedPath) {
+    // ── No block selected: show page settings + quick links ───────────
+    const page = doc?.pages[currentPage]
     return (
       <div className="flex h-full flex-col">
         <Header />
-        <div className="flex flex-1 flex-col items-center justify-center px-6 text-center text-stone-400">
-          <MousePointerClick className="h-8 w-8" />
-          <p className="mt-3 text-sm">Select a block in the outline to edit its properties.</p>
-          <div className="mt-6 w-full space-y-2 text-left">
-            <QuickLink href={`/documents/${documentId}/review`} icon={<Eye className="h-4 w-4" />}>Review &amp; warnings</QuickLink>
-            <QuickLink href={`/documents/${documentId}/versions`} icon={<History className="h-4 w-4" />}>Version history</QuickLink>
+        <div className="flex-1 overflow-auto p-4">
+          <div className="mb-3">
+            <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-amber-800">
+              Page Settings
+            </span>
+            <code className="ml-2 text-xs text-stone-400">P{page?.page ?? currentPage + 1}</code>
+          </div>
+          {page && (
+            <div className="space-y-4">
+              <Field label="Page width (px)">
+                <Input
+                  type="number"
+                  value={page.width}
+                  onChange={(e) => updatePageMeta(currentPage, { width: Number(e.target.value) || page.width })}
+                  className="h-8"
+                />
+              </Field>
+              <Field label="Page height (px)">
+                <Input
+                  type="number"
+                  value={page.height}
+                  onChange={(e) => updatePageMeta(currentPage, { height: Number(e.target.value) || page.height })}
+                  className="h-8"
+                />
+              </Field>
+              <Field label="Background color">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={page.background}
+                    onChange={(e) => updatePageMeta(currentPage, { background: e.target.value })}
+                    className="h-8 w-12 cursor-pointer rounded border border-stone-200"
+                    aria-label="Background color picker"
+                  />
+                  <Input
+                    value={page.background}
+                    onChange={(e) => updatePageMeta(currentPage, { background: e.target.value })}
+                    className="h-8 flex-1 font-mono text-xs"
+                  />
+                </div>
+              </Field>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={() => updatePageMeta(currentPage, { width: 900, height: 1270, background: '#ffffff' })}
+                >
+                  A4 Portrait
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={() => updatePageMeta(currentPage, { width: 1270, height: 900, background: '#ffffff' })}
+                >
+                  A4 Landscape
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={() => updatePageMeta(currentPage, { width: 1080, height: 1350, background: '#fdf8ec' })}
+                >
+                  Note (4:5)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={() => updatePageMeta(currentPage, { width: 1024, height: 1400, background: '#fdf8ec' })}
+                >
+                  Study Card
+                </Button>
+              </div>
+            </div>
+          )}
+          <div className="mt-6 border-t border-stone-200 pt-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-stone-400">Quick links</p>
+            <div className="space-y-2">
+              <QuickLink href={`/documents/${documentId}/review`} icon={<Eye className="h-4 w-4" />}>Review &amp; warnings</QuickLink>
+              <QuickLink href={`/documents/${documentId}/versions`} icon={<History className="h-4 w-4" />}>Version history</QuickLink>
+            </div>
           </div>
         </div>
       </div>
