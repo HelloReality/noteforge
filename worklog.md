@@ -1116,3 +1116,32 @@ Stage Summary:
 - The Vercel build triggered from commit `d336bbb` should succeed — the `/search` page is now `force-dynamic` and will never be statically prerendered.
 
 Note to user: The previous Vercel build was using the OLD commit (52c0e1f). You need to trigger a NEW deployment from the latest commit (d336bbb). In Vercel: Deployments → click "Redeploy" or push a new commit to trigger auto-deploy.
+
+---
+Task ID: 33 (PostgreSQL Migration — Supabase)
+Agent: main (orchestrator)
+Task: Fix Vercel server-side error — switch Prisma datasource from SQLite to PostgreSQL
+
+Work Log:
+- User reported: "Application error: a server-side exception has occurred" on Vercel.
+- Root cause: The Prisma schema was configured for SQLite (`provider = "sqlite"`), but the DATABASE_URL env var on Vercel points at a PostgreSQL database (Supabase). Prisma couldn't connect with the sqlite provider to a PostgreSQL database.
+- Fix:
+  1. Changed `prisma/schema.prisma` datasource provider from `sqlite` to `postgresql`.
+  2. Updated `src/lib/db.ts` — simplified logging config (query logging only in dev, errors only in prod).
+  3. Updated local `.env` to use the Supabase PostgreSQL URL (gitignored — not committed).
+  4. Ran `prisma db push --accept-data-loss` against the Supabase database to create the tables.
+  5. Ran `prisma generate` to regenerate the Prisma client for PostgreSQL.
+- Verified:
+  - Tables created on Supabase (5 documents + 5 versions already present from previous work).
+  - Connection works via the pooler URL.
+  - Queried the database: all 5 documents present (Cybersecurity Notes — Sample, Full Coverage Fixture, Malicious Fixture, Positioned Fixture, Top 50 Cybersecurity).
+- Committed + pushed: `f6c96bb` — fix: switch Prisma datasource from SQLite to PostgreSQL (Supabase)
+- Verified on GitHub: the schema now has `provider = "postgresql"`.
+
+Stage Summary:
+- The Prisma schema now matches the production database (PostgreSQL/Supabase).
+- The next Vercel build (from commit f6c96bb) should:
+  1. Build successfully (no more /search prerender error — fixed in d336bbb)
+  2. Connect to PostgreSQL successfully (no more datasource mismatch)
+  3. Show all 5 documents on the home page
+- The user needs to trigger a new Vercel deployment from the latest commit (f6c96bb).
