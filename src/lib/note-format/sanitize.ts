@@ -336,4 +336,181 @@ export function sanitizeImageSrc(src: string | null, warnings: Warning[], path: 
   return src
 }
 
+// ── Raw HTML sanitizer (for <note-raw> blocks) ─────────────────────────────
+// Allows a much wider set of elements than inline rich text — including
+// div, section, span, ul, ol, li, table, svg, figure, figcaption, h1-h6, p,
+// pre, code, blockquote, hr, br, mark, etc. — so complex layouts (grids,
+// boxes, hand-drawn diagrams) are preserved 1:1.
+// Strips: scripts, iframes, event handlers, javascript: schemes, external
+// resources, dangerous CSS (position:fixed, behavior, @import).
+
+const RAW_BLOCK_ALLOWLIST = new Set([
+  // Structure
+  'div', 'section', 'article', 'main', 'header', 'footer', 'aside', 'span',
+  'figure', 'figcaption', 'details', 'summary',
+  // Headings + text
+  'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'hr', 'mark', 'small', 'time',
+  // Inline formatting
+  'strong', 'em', 'b', 'i', 'u', 's', 'code', 'sub', 'sup', 'kbd', 'samp', 'var', 'abbr', 'cite', 'q',
+  // Lists
+  'ul', 'ol', 'li', 'dl', 'dt', 'dd',
+  // Code
+  'pre', 'code',
+  // Quote
+  'blockquote',
+  // Table
+  'table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th', 'caption', 'colgroup', 'col',
+  // Image + media (img sanitized separately)
+  'img',
+  // SVG + children (sanitized separately for case-preservation)
+  'svg', 'path', 'circle', 'rect', 'ellipse', 'line', 'polyline', 'polygon',
+  'g', 'defs', 'linearGradient', 'radialGradient', 'stop', 'use', 'text',
+  'tspan', 'pattern', 'clippath', 'mask', 'foreignobject', 'marker',
+  // Links (sanitized)
+  'a',
+  // Note: NO script, iframe, object, embed, form, template, style, meta, link, base
+])
+
+/** Global attributes allowed on any raw-HTML element. */
+const RAW_GLOBAL_ATTRS = new Set([
+  'class', 'id', 'style', 'title', 'role', 'aria-label', 'aria-hidden',
+  'data-page', 'data-width', 'data-height', 'data-title', 'data-x', 'data-y',
+  'data-w', 'data-z', 'data-align', 'data-checked', 'data-cite', 'data-caption',
+])
+
+/** Element-specific attributes allowed in raw HTML. */
+const RAW_ELEM_ATTRS: Record<string, Set<string>> = {
+  a: new Set(['href', 'target', 'rel']),
+  img: new Set(['src', 'alt', 'width', 'height']),
+  svg: new Set(['viewBox', 'width', 'height', 'xmlns', 'preserveAspectRatio', 'x', 'y']),
+  path: new Set(['d', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'stroke-dasharray', 'transform']),
+  circle: new Set(['cx', 'cy', 'r', 'fill', 'stroke', 'stroke-width']),
+  rect: new Set(['x', 'y', 'width', 'height', 'rx', 'ry', 'fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'transform']),
+  ellipse: new Set(['cx', 'cy', 'rx', 'ry', 'fill', 'stroke', 'stroke-width']),
+  line: new Set(['x1', 'y1', 'x2', 'y2', 'stroke', 'stroke-width', 'stroke-linecap']),
+  polyline: new Set(['points', 'fill', 'stroke', 'stroke-width']),
+  polygon: new Set(['points', 'fill', 'stroke', 'stroke-width']),
+  stop: new Set(['offset', 'stop-color', 'stop-opacity']),
+  linearGradient: new Set(['id', 'x1', 'y1', 'x2', 'y2']),
+  radialGradient: new Set(['id', 'cx', 'cy', 'r', 'fx', 'fy']),
+  use: new Set(['href', 'xlink:href', 'x', 'y', 'width', 'height']),
+  text: new Set(['x', 'y', 'dx', 'dy', 'fill', 'font-size', 'font-family', 'text-anchor']),
+  marker: new Set(['id', 'markerWidth', 'markerHeight', 'refX', 'refY', 'orient', 'viewBox']),
+  ol: new Set(['start', 'type']),
+  td: new Set(['colspan', 'rowspan']),
+  th: new Set(['colspan', 'rowspan']),
+  col: new Set(['span']),
+  colgroup: new Set(['span']),
+  time: new Set(['datetime']),
+}
+
+/**
+ * Sanitize a raw-HTML block element (the content of <note-raw>).
+ * Returns the inner HTML with dangerous elements/attributes removed but
+ * the visual structure (divs, grids, SVGs, styles) preserved.
+ */
+export function sanitizeRawHtml(el: Element, warnings: Warning[], path: string): string {
+  // Deep-clone the element so we can mutate without affecting the original DOM.
+  const clone = el.cloneNode(true) as Element
+  sanitizeRawSubtree(clone, warnings, path)
+  return (clone as unknown as { innerHTML: string }).innerHTML
+}
+
+function sanitizeRawSubtree(el: Element, warnings: Warning[], path: string): void {
+  // Process children first (depth-first), collecting nodes to remove.
+  const toRemove: (Element | Text | Comment)[] = []
+  for (const child of Array.from(el.childNodes)) {
+    if (child.nodeType === 8 /* COMMENT */) {
+      toRemove.push(child as Comment)
+      continue
+    }
+    if (child.nodeType !== 1) continue
+    const childEl = child as Element
+    const tag = childEl.tagName.toLowerCase()
+
+    // Dangerous containers: drop with subtree.
+    if (DANGEROUS_CONTAINERS.has(tag)) {
+      warnings.push({ code: WarningCode.DANGEROUS_ELEMENT_DROPPED, level: 'warn', message: `Dropped <${tag}> with subtree in raw HTML`, path })
+      toRemove.push(childEl)
+      continue
+    }
+
+    // Unknown tags: unwrap (keep children, remove the wrapper).
+    if (!RAW_BLOCK_ALLOWLIST.has(tag)) {
+      warnings.push({ code: WarningCode.UNKNOWN_ELEMENT, level: 'info', message: `Unwrapped <${tag}> in raw HTML`, path })
+      // Replace the element with its children (unwrap)
+      const parent = childEl.parentNode
+      if (parent) {
+        const frag = (childEl.ownerDocument || (el as any).ownerDocument).createDocumentFragment()
+        while (childEl.firstChild) frag.appendChild(childEl.firstChild)
+        parent.replaceChild(frag, childEl)
+      }
+      continue
+    }
+
+    // Sanitize attributes.
+    sanitizeRawAttrs(childEl, warnings, path)
+    // Recurse.
+    sanitizeRawSubtree(childEl, warnings, path)
+  }
+  for (const n of toRemove) {
+    n.parentNode?.removeChild(n)
+  }
+}
+
+function sanitizeRawAttrs(el: Element, warnings: Warning[], path: string): void {
+  const tag = el.tagName.toLowerCase()
+  const allowed = RAW_ELEM_ATTRS[tag] ?? new Set<string>()
+  for (const attr of Array.from(el.attributes)) {
+    const name = attr.name.toLowerCase()
+    // Drop event handlers.
+    if (name.startsWith('on')) {
+      warnings.push({ code: WarningCode.UNKNOWN_ATTRIBUTE, level: 'warn', message: `Dropped event handler \`${name}\` on <${tag}>`, path })
+      el.removeAttribute(attr.name)
+      continue
+    }
+    // Global attrs.
+    if (RAW_GLOBAL_ATTRS.has(name)) {
+      // Sanitize style attribute.
+      if (name === 'style') {
+        const cleaned = sanitizeInlineStyle(attr.value, warnings, path)
+        if (cleaned) el.setAttribute('style', cleaned)
+        else el.removeAttribute('style')
+      }
+      continue
+    }
+    // Element-specific attrs.
+    if (allowed.has(name)) {
+      // Sanitize href/src.
+      if (name === 'href' || name === 'src' || name === 'xlink:href') {
+        if (hasBadScheme(attr.value)) {
+          warnings.push({ code: WarningCode.BAD_SCHEME, level: 'warn', message: `Dropped unsafe \`${name}\` on <${tag}>`, path })
+          el.removeAttribute(attr.name)
+          continue
+        }
+        if (isExternalUrl(attr.value)) {
+          // For <img src>, strip external; for <a href>, allow http/https.
+          if (tag === 'img') {
+            warnings.push({ code: WarningCode.EXTERNAL_RESOURCE_STRIPPED, level: 'warn', message: `Stripped external img src`, path })
+            el.removeAttribute(attr.name)
+            continue
+          }
+          // Allow http/https links.
+          if (/^https?:/i.test(attr.value)) continue
+          warnings.push({ code: WarningCode.EXTERNAL_RESOURCE_STRIPPED, level: 'warn', message: `Stripped external \`${name}\``, path })
+          el.removeAttribute(attr.name)
+          continue
+        }
+      }
+      continue
+    }
+    // Unknown attribute.
+    if (!name.startsWith('data-')) {
+      warnings.push({ code: WarningCode.UNKNOWN_ATTRIBUTE, level: 'info', message: `Dropped attribute \`${name}\` on <${tag}>`, path })
+      el.removeAttribute(attr.name)
+    }
+    // data-* attrs are allowed globally.
+  }
+}
+
 export { hasBadScheme, isExternalUrl }

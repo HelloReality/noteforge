@@ -95,6 +95,9 @@ function serializeBlock(b: Block, indent: string): string {
       // mermaid / excalidraw: text content (CDATA-safe-ish; kept as raw text)
       return `${indent}<note-diagram type="${b.diagramType}"${w}${h}${t}>\n${indent}  ${escapeForXmlText(b.source)}\n${indent}</note-diagram>`
     }
+    case 'raw-html': {
+      return `${indent}<note-raw${classesAttr(b.classes)}>${b.html}</note-raw>`
+    }
   }
 }
 

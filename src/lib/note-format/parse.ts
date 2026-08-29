@@ -13,13 +13,13 @@ import type {
   NoteDocument, NotePage, ParseResult, Warning,
 } from './types'
 import { WarningCode } from './types'
-import { sanitizeInlineChildren, sanitizeSvgString, sanitizeTable, sanitizeImageSrc, hasBadScheme } from './sanitize'
+import { sanitizeInlineChildren, sanitizeSvgString, sanitizeTable, sanitizeImageSrc, sanitizeRawHtml, hasBadScheme } from './sanitize'
 import { sanitizeStylesheet, sanitizeInlineStyle } from './css'
 
 const BLOCK_TAGS = new Set([
   'note-title', 'note-heading', 'note-paragraph', 'note-question', 'note-list',
   'note-callout', 'note-definition', 'note-quote', 'note-divider', 'note-spacer',
-  'note-code', 'note-table', 'note-image', 'note-diagram',
+  'note-code', 'note-table', 'note-image', 'note-diagram', 'note-raw',
 ])
 
 const DANGEROUS_CONTAINERS = new Set([
@@ -122,7 +122,8 @@ export function parseNoteHtml(html: string): ParseResult {
 /**
  * Fallback: convert plain HTML children of an element (usually <body>) into
  * NoteForge note-* blocks. Standard HTML tags are mapped to their note-*
- * equivalents; unknown tags are unwrapped (their children are processed).
+ * equivalents; complex divs (grids, boxes, diagrams) are preserved as
+ * raw-html blocks so the original design is not lost.
  *
  * Special handling: if a div has the class "page" (common in study-note HTML)
  * or is a top-level wrapper, its children are promoted to the top level
@@ -279,11 +280,8 @@ function htmlElementToBlock(
     case 'article':
     case 'main':
     case 'span': {
-      // Check if this div looks like a callout (has a callout-ish class)
       const classList = parseClasses(el.getAttribute('class'))
       const classStr = classList.join(' ').toLowerCase()
-      const isCallout = classList.some(c => /^(callout|box|tip|info|warning|warn|danger|note|alert|q-block|q-head)$/i.test(c)) ||
-                        /\b(warning|tip|info|danger|note|alert|callout)\b/i.test(classStr)
 
       // If it's a .q-block (question block in the user's HTML), unwrap children
       if (classList.some(c => c.toLowerCase().includes('q-block'))) {
@@ -301,11 +299,30 @@ function htmlElementToBlock(
           const b = htmlElementToBlock(c as Element, warnings, `${path}.children[${children.length}]`, ctx)
           if (b) children.push(b)
         }
-        // Wrap in a question block (no number — the heading inside carries the question)
         if (children.length > 0) {
           return { type: 'question', classes: classList, children }
         }
         return null
+      }
+
+      // ── Preserve complex divs as raw-html blocks ──────────────────────
+      // If a div has complex children (grid-2, box, diagram, node, arrow,
+      // check-item, etc.) or uses inline SVGs/styles, preserve the ENTIRE
+      // div as a raw-html block so the original design is kept 1:1.
+      const hasComplexChildren = el.querySelector('.grid-2, .grid-3-1, .box, .diagram, .node, .arrow, .check-item, .flow-caption, .code, .label-small, .top-bar, .q-head, svg, .box-title') !== null
+      const hasInlineStyle = el.hasAttribute('style')
+      const isCallout = classList.some(c => /^(callout|box|tip|info|warning|warn|danger|note|alert)$/i.test(c)) ||
+                        /\b(warning|tip|info|danger|note|alert|callout)\b/i.test(classStr)
+
+      if (hasComplexChildren) {
+        // Preserve as raw-html — the original design (grids, boxes, SVGs,
+        // hand-drawn borders, rotations) is kept exactly.
+        const rawHtml = sanitizeRawHtml(el, warnings, path)
+        return {
+          type: 'raw-html',
+          html: rawHtml,
+          classes: classList,
+        }
       }
 
       if (isCallout) {
@@ -315,10 +332,8 @@ function htmlElementToBlock(
         else if (/danger/i.test(classStr)) calloutType = 'danger'
         else if (/warn(ing)?/i.test(classStr)) calloutType = 'warning'
         else if (/info/i.test(classStr)) calloutType = 'info'
-        // Try to find a title (first child that's a heading or .box-title)
         const titleEl = el.querySelector('.box-title, .title, h1, h2, h3, h4, h5, h6')
         const title = titleEl ? (titleEl.textContent || '').trim() : undefined
-        // Remove the title element from the inner HTML
         if (titleEl) {
           (titleEl as Element).textContent = ''
         }
@@ -329,7 +344,7 @@ function htmlElementToBlock(
         }
       }
 
-      // Generic div/section: unwrap children (process them as blocks)
+      // Generic div with only simple children → unwrap
       const blocks: Block[] = []
       for (const c of Array.from(el.childNodes)) {
         if (c.nodeType === 8) continue
@@ -343,9 +358,7 @@ function htmlElementToBlock(
         const b = htmlElementToBlock(c as Element, warnings, `${path}.blocks[${blocks.length}]`, ctx)
         if (b) blocks.push(b)
       }
-      // If we got exactly one block, return it directly
       if (blocks.length === 1) return blocks[0]
-      // If we got multiple, wrap in a question (group) block
       if (blocks.length > 1) return { type: 'question', classes: classList, children: blocks }
       return null
     }
@@ -598,6 +611,19 @@ function parseBlock(el: Element, warnings: Warning[], path: string, ctx: ParseCt
       }
       return {
         type: 'diagram', diagramType: dt, source, width, height, title: dtitle,
+        classes: parseClasses(el.getAttribute('class')),
+      }
+    }
+    case 'note-raw': {
+      // <note-raw> preserves arbitrary HTML content (divs, grids, boxes, SVGs,
+      // inline styles) exactly as authored. The inner HTML is sanitized
+      // (dangerous tags/attrs removed) but the visual structure is preserved.
+      // This is the "escape hatch" for rich layouts that don't fit the
+      // semantic note-* blocks.
+      const rawHtml = sanitizeRawHtml(el, warnings, path)
+      return {
+        type: 'raw-html',
+        html: rawHtml,
         classes: parseClasses(el.getAttribute('class')),
       }
     }

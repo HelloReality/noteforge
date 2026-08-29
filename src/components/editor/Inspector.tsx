@@ -290,6 +290,17 @@ export function Inspector({ documentId, selectedBlock, selectedPath }: Inspector
               </Field>
             </>
           )}
+
+          {/* Raw HTML */}
+          {b.type === 'raw-html' && (
+            <Field label="Raw HTML (preserves original design — divs, grids, SVGs, styles)">
+              <Textarea
+                value={b.html}
+                onChange={(e) => set({ html: e.target.value } as any)}
+                className="min-h-[240px] font-mono text-xs"
+              />
+            </Field>
+          )}
         </div>
 
         <div className="mt-6 border-t border-stone-200 pt-4">

@@ -133,6 +133,24 @@ export interface DiagramBlock {
   classes: string[]
 }
 
+/**
+ * A raw-HTML block — preserves arbitrary HTML content (divs, grids, boxes,
+ * diagrams, SVGs, inline styles) exactly as authored. The HTML is sanitized
+ * on import (scripts, iframes, dangerous CSS removed) but the visual structure
+ * and styling are preserved 1:1. This lets users import rich HTML study notes
+ * with complex layouts (hand-drawn boxes, two-column grids, custom diagrams)
+ * without losing the original design.
+ *
+ * The `classes` array lets the renderer apply the imported CSS rules.
+ */
+export interface RawHtmlBlock {
+  type: 'raw-html'
+  /** Sanitized HTML content (preserves divs, spans, SVGs, inline styles, classes). */
+  html: string
+  /** Classes on the root element (for CSS targeting). */
+  classes: string[]
+}
+
 export type Block =
   | TitleBlock
   | HeadingBlock
@@ -148,6 +166,7 @@ export type Block =
   | TableBlock
   | ImageBlock
   | DiagramBlock
+  | RawHtmlBlock
 
 export interface NotePage {
   page: number

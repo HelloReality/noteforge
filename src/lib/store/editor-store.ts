@@ -305,5 +305,6 @@ export function emptyBlock(type: Block['type']): Block {
     case 'table': return { type: 'table', html: '<thead><tr><th>Col 1</th><th>Col 2</th></tr></thead><tbody><tr><td>a</td><td>b</td></tr></tbody>', classes: [] }
     case 'image': return { type: 'image', alt: 'image', classes: [] }
     case 'diagram': return { type: 'diagram', diagramType: 'mermaid', source: 'flowchart LR\n  A --> B', classes: [] }
+    case 'raw-html': return { type: 'raw-html', html: '<div style="padding:16px;border:1px dashed #ccc">Raw HTML block</div>', classes: [] }
   }
 }

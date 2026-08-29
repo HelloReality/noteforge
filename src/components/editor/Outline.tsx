@@ -40,18 +40,19 @@ const BLOCK_ICON: Record<Block['type'], React.ReactNode> = {
   table: <Table className="h-3.5 w-3.5" />,
   image: <ImageIcon className="h-3.5 w-3.5" />,
   diagram: <Spline className="h-3.5 w-3.5" />,
+  'raw-html': <Code2 className="h-3.5 w-3.5" />,
 }
 
 const BLOCK_LABEL: Record<Block['type'], string> = {
   title: 'Title', heading: 'Heading', paragraph: 'Paragraph', question: 'Question',
   list: 'List', callout: 'Callout', definition: 'Definition', quote: 'Quote',
   divider: 'Divider', spacer: 'Spacer', code: 'Code', table: 'Table',
-  image: 'Image', diagram: 'Diagram',
+  image: 'Image', diagram: 'Diagram', 'raw-html': 'Raw HTML',
 }
 
 const ADDABLE: Block['type'][] = [
   'title', 'heading', 'paragraph', 'question', 'list', 'callout', 'definition',
-  'quote', 'divider', 'spacer', 'code', 'table', 'image', 'diagram',
+  'quote', 'divider', 'spacer', 'code', 'table', 'image', 'diagram', 'raw-html',
 ]
 
 export function Outline({ currentPage }: { currentPage: number }) {
@@ -406,5 +407,6 @@ function blockSnippet(block: Block): string {
     case 'table': return block.caption ? `table · ${block.caption}` : 'Table'
     case 'image': return block.alt ? `img · ${block.alt}` : 'Image'
     case 'diagram': return `${block.diagramType} diagram`
+    case 'raw-html': return `raw HTML · ${stripHtml(block.html).slice(0, 40) || 'block'}`
   }
 }
