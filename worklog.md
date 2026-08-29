@@ -1176,3 +1176,33 @@ Stage Summary:
   1. Update the DATABASE_URL environment variable in the Vercel project settings to the new Supabase URL.
   2. Trigger a new Vercel deployment from the latest commit (bf928fa).
   3. The deployed site should now work — the editor will load the v1 documents from the new database.
+
+---
+Task ID: 35 (Auto-Import Plain HTML)
+Agent: main (orchestrator)
+Task: Enhance the parser to auto-convert plain HTML files into notes (no manual conversion needed)
+
+Work Log:
+- User had a plain HTML study-notes file that couldn't be imported because it didn't use the <note-*> custom tags.
+- Enhanced src/lib/note-format/parse.ts with a fallback path: when no <note-document> is found, the <body> is auto-converted to a single-page note.
+- Added htmlElementToBlock() which maps standard HTML tags to note-* blocks:
+  - h1 → title, h2-h6 → heading, p → paragraph, ul/ol → list, blockquote → quote
+  - pre → code, table → table, img → image, figure → image with caption, hr → divider
+  - svg → diagram, dl → definition
+  - div.callout/box/tip/warning/info → callout (type inferred from class)
+  - div.q-block → question (wraps children)
+  - div.page/container → unwrap children to top level
+- Added convertPlainHtmlToBlocks() which recursively walks the body and promotes wrapper divs.
+- Verified with the user's actual HTML file:
+  - Imported as "Top 50 Cybersecurity Interview Questions — Page 3"
+  - 14 blocks: title, 7 question blocks, 5 dividers, 1 callout
+  - Only 2 warnings (both expected: missing meta tag, no note-document)
+  - v1 format, editor can load + edit it
+- Committed + pushed: 99bacc6 — feat: auto-import plain HTML as notes
+
+Stage Summary:
+- The parser now accepts BOTH formats:
+  1. Native note-* format (with <note-document>) — full fidelity
+  2. Plain HTML (no <note-document>) — auto-converted with a warning
+- Users can import existing HTML study notes without manually converting them.
+- The /import page will work with any HTML file.
