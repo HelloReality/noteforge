@@ -9,6 +9,7 @@ import { useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { Eye, X, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { formatStableRelative } from '@/lib/date-format'
 
 const STORAGE_KEY = 'noteforge:recently-viewed'
 const MAX_ITEMS = 8
@@ -150,7 +151,7 @@ export function RecentlyViewed() {
               <p className="truncate text-sm font-medium text-stone-800 group-hover:text-amber-700 dark:text-stone-100 dark:group-hover:text-amber-400">
                 {item.title}
               </p>
-              <p className="text-xs text-stone-400">{formatRelative(item.ts)}</p>
+              <p className="text-xs text-stone-400">{formatStableRelative(new Date(item.ts))}</p>
             </Link>
             <button
               onClick={() => handleRemove(item.id)}
@@ -165,17 +166,4 @@ export function RecentlyViewed() {
       </div>
     </section>
   )
-}
-
-function formatRelative(ts: number): string {
-  const diffMs = Date.now() - ts
-  const sec = Math.floor(diffMs / 1000)
-  if (sec < 60) return 'just now'
-  const min = Math.floor(sec / 60)
-  if (min < 60) return `${min}m ago`
-  const hr = Math.floor(min / 60)
-  if (hr < 24) return `${hr}h ago`
-  const day = Math.floor(hr / 24)
-  if (day < 7) return `${day}d ago`
-  return new Date(ts).toLocaleDateString()
 }

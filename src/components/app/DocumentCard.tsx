@@ -7,6 +7,7 @@ import { FavoriteStar } from './Favorites'
 import { DocumentTags, TagAdder } from './Tags'
 import type { DocumentListRow, DocumentStats } from '@/lib/server/storage'
 import { cn } from '@/lib/utils'
+import { formatStableDateTime, formatStableRelative } from '@/lib/date-format'
 import { Badge } from '@/components/ui/badge'
 import {
   Pencil, History, Eye, Globe, AlertTriangle, Clock, FileText,
@@ -27,6 +28,10 @@ export function DocumentCard({ doc, stats, published, selected, onSelect }: {
   onSelect?: (id: string, selected: boolean) => void
 }) {
   const updated = new Date(doc.updatedAt)
+  // Pre-compute stable UTC date strings so the server-rendered HTML matches
+  // the client-hydrated HTML (no hydration mismatch from locale/timezone).
+  const updatedTitle = formatStableDateTime(updated)
+  const updatedRelative = formatStableRelative(updated)
   return (
     <div className={cn(
       'group relative flex h-full flex-col rounded-xl border bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-stone-900',
@@ -75,9 +80,9 @@ export function DocumentCard({ doc, stats, published, selected, onSelect }: {
           <FileText className="h-3.5 w-3.5 text-stone-400" />
           v{doc.latestVersionNumber ?? 0} · {doc.versionCount} save{doc.versionCount === 1 ? '' : 's'}
         </span>
-        <span className="inline-flex items-center gap-1" title={updated.toLocaleString()}>
+        <span className="inline-flex items-center gap-1" title={updatedTitle}>
           <Clock className="h-3.5 w-3.5 text-stone-400" />
-          {formatRelative(updated)}
+          {updatedRelative}
         </span>
       </div>
 
@@ -142,17 +147,4 @@ function Stat({ icon, value, label }: { icon: React.ReactNode; value: number; la
       <div className="mt-0.5 text-[10px] uppercase tracking-wide text-stone-400">{label}</div>
     </div>
   )
-}
-
-function formatRelative(date: Date): string {
-  const diffMs = Date.now() - date.getTime()
-  const sec = Math.floor(diffMs / 1000)
-  if (sec < 60) return 'just now'
-  const min = Math.floor(sec / 60)
-  if (min < 60) return `${min}m ago`
-  const hr = Math.floor(min / 60)
-  if (hr < 24) return `${hr}h ago`
-  const day = Math.floor(hr / 24)
-  if (day < 7) return `${day}d ago`
-  return date.toLocaleDateString()
 }

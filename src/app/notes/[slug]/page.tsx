@@ -9,6 +9,7 @@ import { PublicViewerActions } from '@/components/app/PublicViewerActions'
 import { TableOfContents } from '@/components/app/TableOfContents'
 import { ShieldCheck, FileWarning, Globe } from 'lucide-react'
 import Link from 'next/link'
+import { formatStableDateLong } from '@/lib/date-format'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,7 +40,7 @@ export default async function PublicNotePage({ params }: { params: Promise<{ slu
             <h1 className="text-xl font-bold tracking-tight text-stone-900">{data.document.title}</h1>
             <p className="mt-0.5 flex items-center gap-2 text-xs text-stone-500">
               <Globe className="h-3.5 w-3.5" />
-              Published · last updated {updated.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+              Published · last updated {formatStableDateLong(updated)}
             </p>
           </div>
           <div className="flex items-center gap-2">

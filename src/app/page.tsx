@@ -6,6 +6,7 @@ import { listDocuments, getPublishedSlugs, getDocumentStats, listRecentDocuments
 import { AppEmptyState } from '@/components/app/AppEmptyState'
 import { LibraryClient, type LibraryDoc } from '@/components/app/LibraryClient'
 import { RecentlyViewed } from '@/components/app/RecentlyViewed'
+import { formatStableRelative } from '@/lib/date-format'
 import { Upload, ShieldCheck, FileText, Globe, Layers, Search, Clock, ArrowRight, Hash, Spline, Table as TableIcon, Type, HelpCircle, LayoutTemplate } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -167,7 +168,7 @@ function RecentDocuments({ docs, publishedSlugs }: { docs: DocumentListRow[]; pu
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-stone-800 group-hover:text-amber-700">{d.title}</p>
-              <p className="text-xs text-stone-400">{formatRelative(updated)}</p>
+              <p className="text-xs text-stone-400">{formatStableRelative(updated)}</p>
             </div>
             {published && (
               <Globe className="h-3.5 w-3.5 shrink-0 text-emerald-500" aria-label="Published" />
@@ -178,19 +179,6 @@ function RecentDocuments({ docs, publishedSlugs }: { docs: DocumentListRow[]; pu
       })}
     </div>
   )
-}
-
-function formatRelative(date: Date): string {
-  const diffMs = Date.now() - date.getTime()
-  const sec = Math.floor(diffMs / 1000)
-  if (sec < 60) return 'just now'
-  const min = Math.floor(sec / 60)
-  if (min < 60) return `${min}m ago`
-  const hr = Math.floor(min / 60)
-  if (hr < 24) return `${hr}h ago`
-  const day = Math.floor(hr / 24)
-  if (day < 7) return `${day}d ago`
-  return date.toLocaleDateString()
 }
 
 function StatTile({ icon, value, label, tone }: {

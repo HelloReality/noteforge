@@ -889,3 +889,50 @@ Priority recommendations for next phase:
 4. Add tag filtering to the library toolbar (filter by tag chip).
 5. Add a document activity timeline (who edited what, when).
 6. Scaffold the formal vitest test suites (security.spec.ts, parse.fixtures.spec.ts, roundtrip.spec.ts) per Appendix A.4.
+
+---
+Task ID: 28 (Hydration Mismatch Fix — Date Formatting)
+Agent: main (orchestrator)
+Task: Fix "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties" — date strings differed between server (UTC) and client (Asia/Calcutta, UTC+5:30)
+
+Work Log:
+- Diagnosed root cause: `DocumentCard` rendered `title={updated.toLocaleString()}` which produces timezone-dependent strings. The server runs in UTC (e.g. "8/27/2026, 11:03:04 PM") but the user's browser runs in Asia/Calcutta (e.g. "8/28/2026, 4:33:04 AM") — a 5h30m difference that triggers React's hydration mismatch warning.
+- Created `src/lib/date-format.ts` with four stable, timezone-independent formatters:
+  - `formatStableDateTime(date)` → "YYYY-MM-DD HH:MM UTC" (e.g. "2026-08-27 23:03 UTC")
+  - `formatStableDate(date)` → "Mon DD, YYYY" (e.g. "Aug 27, 2026") — uses UTC, no locale
+  - `formatStableDateLong(date)` → "Month DD, YYYY" (e.g. "August 27, 2026")
+  - `formatStableRelative(date, nowMs?)` → "just now" / "Xm ago" / "Xh ago" / "Xd ago" / stable date — uses elapsed ms (timezone-independent) for short periods, falls back to `formatStableDate` for periods > 7 days.
+- Updated `src/components/app/DocumentCard.tsx`:
+  - Replaced `title={updated.toLocaleString()}` with `title={updatedTitle}` (pre-computed via `formatStableDateTime`).
+  - Replaced `{formatRelative(updated)}` with `{updatedRelative}` (pre-computed via `formatStableRelative`).
+  - Removed the local `formatRelative` function (now using the shared utility).
+- Updated `src/components/app/RecentlyViewed.tsx`:
+  - Replaced `formatRelative(item.ts)` with `formatStableRelative(new Date(item.ts))`.
+  - Removed the local `formatRelative` function.
+- Updated `src/app/page.tsx`:
+  - Replaced `formatRelative(updated)` with `formatStableRelative(updated)` in the `RecentDocuments` list.
+  - Removed the local `formatRelative` function.
+- Updated `src/app/documents/[id]/versions/page.tsx`:
+  - Replaced `new Date(ver.createdAt).toLocaleString()` with `formatStableDateTime(new Date(ver.createdAt))`.
+- Updated `src/app/notes/[slug]/page.tsx`:
+  - Replaced `updated.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })` with `formatStableDateLong(updated)`.
+- Left shadcn/ui's `calendar.tsx` and `chart.tsx` unchanged — they use locale-dependent formatting but only render in interactive client-only widgets (not part of the SSR'd library page where the mismatch occurred).
+
+Stage Summary (verification results):
+- `bun run lint`: 0 errors, 0 warnings.
+- Rendered HTML inspection: `curl -s http://127.0.0.1:3000/ | grep -oE 'title="[^"]*UTC[^"]*"'` returns 3 matches:
+  - `title="2026-08-27 23:03 UTC"`
+  - `title="2026-08-27 22:02 UTC"`
+  - `title="2026-08-27 20:39 UTC"`
+- No more locale-formatted dates in the rendered HTML (`grep` for `title="[0-9]+/[0-9]+/[0-9]+, [0-9]+:[0-9]+:[0-9]+ [AP]M"` returns no matches).
+- agent-browser console: no hydration errors, no mismatch warnings.
+- VLM confirmed: 3 document cards visible, no error messages, no hydration warnings, UI is stable.
+
+Unresolved issues / risks:
+- None for this fix. The hydration mismatch was caused solely by locale-dependent date formatting in SSR'd components. All such places now use stable UTC formatters.
+- shadcn/ui calendar/chart still use locale-dependent formatting, but those are interactive client-only widgets not in the SSR path.
+
+Priority recommendations for next phase:
+1. Continue with the canvas editor improvements (diagram editing, context menus) from Task 27.
+2. Add a stable date formatter ESLint rule to catch future locale-dependent date usage.
+3. Consider a `useLocalTime` hook that renders a placeholder on the server and updates to local time only after mount (if a true local-time display is ever needed).

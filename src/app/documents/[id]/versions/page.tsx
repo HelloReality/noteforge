@@ -7,6 +7,7 @@ import { WarningsPanel } from '@/components/app/WarningsPanel'
 import { RestoreVersionButton } from '@/components/app/RestoreVersionButton'
 import { ChevronLeft, History, FileText, Eye, GitCompare, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { formatStableDateTime } from '@/lib/date-format'
 
 export const dynamic = 'force-dynamic'
 
@@ -133,7 +134,7 @@ export default async function VersionsPage({
                       <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-emerald-700">latest</span>
                     )}
                   </Link>
-                  <span className="text-xs text-stone-400">{new Date(ver.createdAt).toLocaleString()}</span>
+                  <span className="text-xs text-stone-400">{formatStableDateTime(new Date(ver.createdAt))}</span>
                 </div>
                 {ver.note && <p className="mt-1.5 text-xs text-stone-600">{ver.note}</p>}
                 <div className="mt-1.5 flex items-center justify-between">
