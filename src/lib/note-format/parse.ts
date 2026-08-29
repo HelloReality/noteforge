@@ -62,8 +62,28 @@ export function parseNoteHtml(html: string): ParseResult {
   // 3. Find the document element.
   const docEl = document.querySelector('note-document')
   if (!docEl) {
-    warnings.push({ code: WarningCode.STRUCTURAL_ERROR, level: 'error', message: `No <note-document> root found`, path: 'document' })
-    return { model: { title: 'Untitled', version: '1', css: css.trim(), pages: [] }, warnings }
+    // ── Fallback: auto-import plain HTML as a single-page note ──────────
+    // If the file has no <note-document>, try to import the <body> content
+    // by converting standard HTML tags (h1-h6, p, ul, blockquote, pre, table,
+    // img, div) into the equivalent note-* blocks. This lets users import
+    // existing HTML study notes without manually converting them.
+    const body = document.querySelector('body')
+    if (!body) {
+      warnings.push({ code: WarningCode.STRUCTURAL_ERROR, level: 'error', message: `No <note-document> root and no <body> found`, path: 'document' })
+      return { model: { title: 'Untitled', version: '1', css: css.trim(), pages: [] }, warnings }
+    }
+    warnings.push({
+      code: WarningCode.STRUCTURAL_ERROR, level: 'warn',
+      message: `No <note-document> root found; auto-converting plain HTML to a single-page note`,
+      path: 'document',
+    })
+    const headTitle = document.querySelector('title')?.textContent || undefined
+    const firstH1 = body.querySelector('h1')
+    const autoTitle = headTitle || (firstH1 ? (firstH1.textContent || '').trim() : 'Imported Note')
+    const page: NotePage = { page: 1, width: 1024, height: 1400, background: '#fdf8ec', blocks: [] }
+    convertPlainHtmlToBlocks(body, page.blocks, warnings, 'document', ctx)
+    const model: NoteDocument = { title: autoTitle, version: '1', generator, css: css.trim(), pages: [page] }
+    return { model, warnings }
   }
 
   const titleAttr = docEl.getAttribute('data-title') || undefined
@@ -97,6 +117,272 @@ export function parseNoteHtml(html: string): ParseResult {
 
   const model: NoteDocument = { title, version: versionAttr, generator, css: css.trim(), pages }
   return { model, warnings }
+}
+
+/**
+ * Fallback: convert plain HTML children of an element (usually <body>) into
+ * NoteForge note-* blocks. Standard HTML tags are mapped to their note-*
+ * equivalents; unknown tags are unwrapped (their children are processed).
+ *
+ * Special handling: if a div has the class "page" (common in study-note HTML)
+ * or is a top-level wrapper, its children are promoted to the top level
+ * rather than wrapped in a single question block.
+ */
+function convertPlainHtmlToBlocks(
+  el: Element,
+  out: Block[],
+  warnings: Warning[],
+  path: string,
+  ctx: ParseCtx,
+): void {
+  for (const child of Array.from(el.childNodes)) {
+    if (child.nodeType === 8 /* COMMENT */) continue
+    if (child.nodeType === 3 /* TEXT */) {
+      const txt = (child.textContent || '').trim()
+      if (!txt) continue
+      // Stray text → paragraph
+      out.push({ type: 'paragraph', html: escapeForModel(txt), classes: [] })
+      continue
+    }
+    if (child.nodeType !== 1) continue
+    const childEl = child as Element
+    const childTag = childEl.tagName.toLowerCase()
+
+    // If this is a wrapper div (class="page" or similar), unwrap its children
+    // to the top level rather than wrapping them in a question block.
+    if (childTag === 'div' || childTag === 'section' || childTag === 'main' || childTag === 'article') {
+      const classList = parseClasses(childEl.getAttribute('class'))
+      const classStr = classList.join(' ').toLowerCase()
+      const isWrapper = classList.some(c => /^(page|container|wrapper|content|main)$/i.test(c)) ||
+                        classStr.includes('page') && !classStr.includes('q-block')
+
+      if (isWrapper) {
+        // Unwrap: process children at the top level
+        convertPlainHtmlToBlocks(childEl, out, warnings, `${path}.blocks[${out.length}]`, ctx)
+        continue
+      }
+    }
+
+    const block = htmlElementToBlock(childEl, warnings, `${path}.blocks[${out.length}]`, ctx)
+    if (block) out.push(block)
+  }
+}
+
+/** Convert a single standard HTML element into a NoteForge block. */
+function htmlElementToBlock(
+  el: Element,
+  warnings: Warning[],
+  path: string,
+  ctx: ParseCtx,
+): Block | null {
+  const tag = el.tagName.toLowerCase()
+
+  // Dangerous containers are dropped entirely.
+  if (DANGEROUS_CONTAINERS.has(tag)) {
+    warnings.push({ code: WarningCode.DANGEROUS_ELEMENT_DROPPED, level: 'warn', message: `Dropped <${tag}> with subtree`, path })
+    return null
+  }
+
+  // If it's already a note-* tag, use the native parser.
+  if (BLOCK_TAGS.has(tag)) {
+    return parseBlock(el, warnings, path, ctx)
+  }
+
+  switch (tag) {
+    case 'h1':
+      return { type: 'title', align: 'center', html: sanitizeInlineChildren(el, warnings, path), classes: parseClasses(el.getAttribute('class')) }
+    case 'h2':
+    case 'h3':
+    case 'h4':
+    case 'h5':
+    case 'h6': {
+      const lvl = tag === 'h2' ? 2 : tag === 'h3' ? 3 : 4
+      return { type: 'heading', level: lvl as HeadingLevel, html: sanitizeInlineChildren(el, warnings, path), classes: parseClasses(el.getAttribute('class')) }
+    }
+    case 'p':
+      return { type: 'paragraph', html: sanitizeInlineChildren(el, warnings, path), classes: parseClasses(el.getAttribute('class')) }
+    case 'ul':
+    case 'ol': {
+      const classList = parseClasses(el.getAttribute('class'))
+      const isCheck = classList.some(c => c.includes('check'))
+      const listType: ListType = tag === 'ol' ? 'numbered' : isCheck ? 'check' : 'bullet'
+      const items: { html: string; checked?: boolean }[] = []
+      let i = 0
+      for (const li of Array.from(el.children)) {
+        if (li.tagName.toLowerCase() !== 'li') continue
+        items.push({
+          html: sanitizeInlineChildren(li, warnings, `${path}.items[${i}]`),
+          checked: listType === 'check' ? (li as Element).getAttribute('data-checked') === 'true' : undefined,
+        })
+        i++
+      }
+      return { type: 'list', listType, items, classes: classList }
+    }
+    case 'blockquote': {
+      const cite = el.getAttribute('cite') || undefined
+      return { type: 'quote', cite, html: sanitizeInlineChildren(el, warnings, path), classes: parseClasses(el.getAttribute('class')) }
+    }
+    case 'pre': {
+      // <pre><code>...</code></pre> → code block
+      const codeEl = el.querySelector('code')
+      const text = (codeEl || el).textContent || ''
+      const language = codeEl?.className?.match(/language-(\w+)/)?.[1] || 'text'
+      return { type: 'code', language, text }
+    }
+    case 'table': {
+      return { type: 'table', html: sanitizeTable(el as unknown as HTMLTableElement, warnings, path), classes: parseClasses(el.getAttribute('class')) }
+    }
+    case 'img': {
+      const src = sanitizeImageSrc(el.getAttribute('src'), warnings, path) || undefined
+      return {
+        type: 'image', src,
+        alt: el.getAttribute('alt') || undefined,
+        width: parseOptionalInt(el.getAttribute('width')),
+        height: parseOptionalInt(el.getAttribute('height')),
+        classes: parseClasses(el.getAttribute('class')),
+      }
+    }
+    case 'hr':
+      return { type: 'divider', style: 'solid' }
+    case 'svg':
+      // Standalone SVG → note-diagram type="svg"
+      return {
+        type: 'diagram', diagramType: 'svg',
+        source: sanitizeSvgString((el as unknown as { outerHTML: string }).outerHTML, warnings, path),
+        classes: [],
+      }
+    case 'figure': {
+      // <figure><img><figcaption> → image block with caption
+      const img = el.querySelector('img')
+      const figcaption = el.querySelector('figcaption')
+      if (img) {
+        return {
+          type: 'image',
+          src: sanitizeImageSrc(img.getAttribute('src'), warnings, path) || undefined,
+          alt: img.getAttribute('alt') || undefined,
+          caption: figcaption?.textContent?.trim() || undefined,
+          classes: parseClasses(el.getAttribute('class')),
+        }
+      }
+      // Fallback: unwrap figure children
+      const blocks: Block[] = []
+      for (const c of Array.from(el.childNodes)) {
+        if (c.nodeType === 1) {
+          const b = htmlElementToBlock(c as Element, warnings, path, ctx)
+          if (b) blocks.push(b)
+        }
+      }
+      return blocks[0] || null
+    }
+    case 'div':
+    case 'section':
+    case 'article':
+    case 'main':
+    case 'span': {
+      // Check if this div looks like a callout (has a callout-ish class)
+      const classList = parseClasses(el.getAttribute('class'))
+      const classStr = classList.join(' ').toLowerCase()
+      const isCallout = classList.some(c => /^(callout|box|tip|info|warning|warn|danger|note|alert|q-block|q-head)$/i.test(c)) ||
+                        /\b(warning|tip|info|danger|note|alert|callout)\b/i.test(classStr)
+
+      // If it's a .q-block (question block in the user's HTML), unwrap children
+      if (classList.some(c => c.toLowerCase().includes('q-block'))) {
+        // Unwrap: process children as blocks
+        const children: Block[] = []
+        for (const c of Array.from(el.childNodes)) {
+          if (c.nodeType === 8) continue
+          if (c.nodeType === 3) {
+            const txt = (c.textContent || '').trim()
+            if (!txt) continue
+            children.push({ type: 'paragraph', html: escapeForModel(txt), classes: [] })
+            continue
+          }
+          if (c.nodeType !== 1) continue
+          const b = htmlElementToBlock(c as Element, warnings, `${path}.children[${children.length}]`, ctx)
+          if (b) children.push(b)
+        }
+        // Wrap in a question block (no number — the heading inside carries the question)
+        if (children.length > 0) {
+          return { type: 'question', classes: classList, children }
+        }
+        return null
+      }
+
+      if (isCallout) {
+        // Determine callout type from class
+        let calloutType: CalloutType = 'note'
+        if (/tip/i.test(classStr)) calloutType = 'tip'
+        else if (/danger/i.test(classStr)) calloutType = 'danger'
+        else if (/warn(ing)?/i.test(classStr)) calloutType = 'warning'
+        else if (/info/i.test(classStr)) calloutType = 'info'
+        // Try to find a title (first child that's a heading or .box-title)
+        const titleEl = el.querySelector('.box-title, .title, h1, h2, h3, h4, h5, h6')
+        const title = titleEl ? (titleEl.textContent || '').trim() : undefined
+        // Remove the title element from the inner HTML
+        if (titleEl) {
+          (titleEl as Element).textContent = ''
+        }
+        return {
+          type: 'callout', calloutType, title,
+          html: sanitizeInlineChildren(el, warnings, path),
+          classes: classList,
+        }
+      }
+
+      // Generic div/section: unwrap children (process them as blocks)
+      const blocks: Block[] = []
+      for (const c of Array.from(el.childNodes)) {
+        if (c.nodeType === 8) continue
+        if (c.nodeType === 3) {
+          const txt = (c.textContent || '').trim()
+          if (!txt) continue
+          blocks.push({ type: 'paragraph', html: escapeForModel(txt), classes: [] })
+          continue
+        }
+        if (c.nodeType !== 1) continue
+        const b = htmlElementToBlock(c as Element, warnings, `${path}.blocks[${blocks.length}]`, ctx)
+        if (b) blocks.push(b)
+      }
+      // If we got exactly one block, return it directly
+      if (blocks.length === 1) return blocks[0]
+      // If we got multiple, wrap in a question (group) block
+      if (blocks.length > 1) return { type: 'question', classes: classList, children: blocks }
+      return null
+    }
+    case 'dl': {
+      // <dl><dt>Term</dt><dd>Definition</dd></dl> → definition block(s)
+      const dts = Array.from(el.querySelectorAll('dt'))
+      const dds = Array.from(el.querySelectorAll('dd'))
+      if (dts.length > 0 && dds.length > 0) {
+        return {
+          type: 'definition',
+          term: (dts[0].textContent || '').trim(),
+          html: sanitizeInlineChildren(dds[0] as unknown as Element, warnings, path),
+          classes: parseClasses(el.getAttribute('class')),
+        }
+      }
+      return null
+    }
+    default:
+      // Unknown tag: unwrap and try children
+      warnings.push({ code: WarningCode.UNKNOWN_ELEMENT, level: 'info', message: `Unwrapped unknown element <${tag}>`, path })
+      const blocks: Block[] = []
+      for (const c of Array.from(el.childNodes)) {
+        if (c.nodeType === 8) continue
+        if (c.nodeType === 3) {
+          const txt = (c.textContent || '').trim()
+          if (!txt) continue
+          blocks.push({ type: 'paragraph', html: escapeForModel(txt), classes: [] })
+          continue
+        }
+        if (c.nodeType !== 1) continue
+        const b = htmlElementToBlock(c as Element, warnings, `${path}.blocks[${blocks.length}]`, ctx)
+        if (b) blocks.push(b)
+      }
+      if (blocks.length === 1) return blocks[0]
+      if (blocks.length > 1) return { type: 'question', children: blocks, classes: [] }
+      return null
+  }
 }
 
 function parsePage(el: Element, warnings: Warning[], pageIndex: number, ctx: ParseCtx): NotePage {
